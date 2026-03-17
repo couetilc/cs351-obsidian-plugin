@@ -1,0 +1,19 @@
+#!/usr/bin/env node
+import { dirname, resolve } from "path";
+import { fileURLToPath } from "url";
+
+const slug = process.argv[2];
+if (!slug) {
+	console.error("Usage: build-standalone <assignment-slug>");
+	console.error("Example: npm run build:standalone assignment-2");
+	process.exit(1);
+}
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const rootDir = resolve(__dirname, "..");
+const { buildStandalone } = await import("../dist/build-standalone.mjs");
+
+buildStandalone(rootDir, slug).catch((err) => {
+	console.error(`Error: ${err.message}`);
+	process.exit(1);
+});

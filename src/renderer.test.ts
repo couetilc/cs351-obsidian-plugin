@@ -1,0 +1,273 @@
+import { describe, it, expect } from "vitest";
+import { stripFrontmatter, preprocessMdx, render, renderDocument, renderShikiCode, getHighlighter, resolveLang } from "./renderer";
+
+describe("resolveLang", () => {
+	it("maps env to dotenv", () => {
+		expect(resolveLang("env")).toBe("dotenv");
+	});
+
+	it("maps py to python", () => {
+		expect(resolveLang("py")).toBe("python");
+	});
+
+	it("passes through known languages", () => {
+		expect(resolveLang("json")).toBe("json");
+		expect(resolveLang("bash")).toBe("bash");
+	});
+
+	it("returns plaintext for empty string", () => {
+		expect(resolveLang("")).toBe("plaintext");
+	});
+});
+
+describe("stripFrontmatter", () => {
+	it("removes YAML frontmatter", () => {
+		const input = '---\ntitle: "Test"\ndate: 2026-01-01\n---\n# Hello';
+		expect(stripFrontmatter(input)).toBe("# Hello");
+	});
+
+	it("returns source unchanged when no frontmatter", () => {
+		const input = "# Hello\nWorld";
+		expect(stripFrontmatter(input)).toBe(input);
+	});
+
+	it("handles Windows line endings", () => {
+		const input = '---\r\ntitle: "Test"\r\n---\r\n# Hello';
+		expect(stripFrontmatter(input)).toBe("# Hello");
+	});
+});
+
+describe("preprocessMdx", () => {
+	it("extracts image imports with @images/cloud_assignments/ prefix", () => {
+		const input = `import foo from '@images/cloud_assignments/ca1/test.png'\n# Hello`;
+		const result = preprocessMdx(input);
+		expect(result.imageImports.get("foo")).toBe("images/ca1/test.png");
+		expect(result.cleanedSource).toContain('export const foo = "images/ca1/test.png"');
+		expect(result.cleanedSource).not.toContain("import foo");
+	});
+
+	it("extracts image imports with relative path prefix", () => {
+		const input = `import bar from '../../images/cloud_assignments/ca2/img.png'\n# Hello`;
+		const result = preprocessMdx(input);
+		expect(result.imageImports.get("bar")).toBe("images/ca2/img.png");
+	});
+
+	it("extracts image imports with short @images/ prefix", () => {
+		const input = `import img from '@images/ca1/test.png'\n# Hello`;
+		const result = preprocessMdx(input);
+		expect(result.imageImports.get("img")).toBe("images/ca1/test.png");
+	});
+
+	it("strips component imports with @components/ prefix", () => {
+		const input = `import Editor from '@components/Editor.astro'\n# Hello`;
+		const result = preprocessMdx(input);
+		expect(result.cleanedSource).not.toContain("import Editor");
+		expect(result.cleanedSource).toContain("# Hello");
+	});
+
+	it("strips component imports with relative paths", () => {
+		const input = `import Editor from '../../components/Editor.astro'\n# Hello`;
+		const result = preprocessMdx(input);
+		expect(result.cleanedSource).not.toContain("import Editor");
+	});
+
+	it("preserves non-import lines", () => {
+		const input = "# Hello\n\nSome paragraph text";
+		const result = preprocessMdx(input);
+		expect(result.cleanedSource).toBe(input);
+	});
+});
+
+describe("renderShikiCode", () => {
+	it("highlights code with a given language and theme", async () => {
+		const html = await renderShikiCode("print('hello')", "python", "github-light");
+		expect(html).toContain("shiki");
+		expect(html).toContain("print");
+	}, 30_000);
+
+	it("falls back to plaintext for unknown lang", async () => {
+		const html = await renderShikiCode("some code", "", "github-light");
+		expect(html).toContain("some code");
+	}, 30_000);
+});
+
+describe("getHighlighter", () => {
+	it("returns the same highlighter instance", async () => {
+		const h1 = await getHighlighter();
+		const h2 = await getHighlighter();
+		expect(h1).toBe(h2);
+	}, 30_000);
+});
+
+describe("render", () => {
+	it("renders simple MDX content", async () => {
+		const html = await render("# Hello World\n\nSome text here.");
+		expect(html).toContain("<h1>Hello World</h1>");
+		expect(html).toContain("Some text here.");
+	}, 30_000);
+
+	it("renders MDX with frontmatter", async () => {
+		const source = '---\ntitle: "Test"\n---\n# Test Page\n\nContent';
+		const html = await render(source);
+		expect(html).toContain("<h1>Test Page</h1>");
+		expect(html).not.toContain("---");
+	}, 30_000);
+
+	it("renders callout components", async () => {
+		const source = "<Important>\nThis is important!\n</Important>";
+		const html = await render(source);
+		expect(html).toContain("ca-important");
+		expect(html).toContain("🚨");
+		expect(html).toContain("This is important!");
+	}, 30_000);
+
+	it("renders Editor with Shiki highlighting", async () => {
+		const source = '<Editor filename="test.py" lang="python" content="print(1)" />';
+		const html = await render(source);
+		expect(html).toContain("ca-editor");
+		expect(html).toContain("test.py");
+		expect(html).toContain("shiki");
+		expect(html).toContain("print");
+	}, 30_000);
+
+	it("renders Editor with no lang (falls back to plaintext)", async () => {
+		const source = '<Editor filename="notes.txt" content="hello world" />';
+		const html = await render(source);
+		expect(html).toContain("ca-editor");
+		expect(html).toContain("hello world");
+	}, 30_000);
+
+	it("renders Editor with custom Code component (no Shiki wrapping)", async () => {
+		// When Code prop is provided, the Editor wrapper should pass through
+		const source = `<Editor filename="creds" Code={({ children }) => <><pre><div>hello</div></pre></>} />`;
+		const html = await render(source);
+		expect(html).toContain("ca-editor");
+		expect(html).toContain("creds");
+		expect(html).toContain("hello");
+	}, 30_000);
+
+	it("renders Terminal with Shiki highlighting", async () => {
+		const source = '<Terminal content="$ echo hi" />';
+		const html = await render(source);
+		expect(html).toContain("ca-terminal");
+		expect(html).toContain("shiki");
+	}, 30_000);
+
+	it("renders Terminal with venv prefix on mixed lines", async () => {
+		const source = `<Terminal content={"$ echo hi\\n(.venv) $ pip install django\\nsome output"} />`;
+		const html = await render(source);
+		expect(html).toContain("ca-terminal");
+		expect(html).toContain("(.venv)");
+		expect(html).toContain("pip install django");
+	}, 30_000);
+
+	it("renders Terminal without content prop", async () => {
+		const source = "<Terminal />";
+		const html = await render(source);
+		expect(html).toContain("ca-terminal");
+	}, 30_000);
+
+	it("renders Screenshot component", async () => {
+		const source = `
+export const testImg = "images/ca1/test.png";
+
+<Screenshot image={testImg} alt="Test" url="https://example.com" />`;
+		const html = await render(source);
+		expect(html).toContain("ca-screenshot");
+		expect(html).toContain("images/ca1/test.png");
+		expect(html).toContain("https://example.com");
+	}, 30_000);
+
+	it("renders Detail component", async () => {
+		const source = '<Detail summary="Show more">\nHidden content\n</Detail>';
+		const html = await render(source);
+		expect(html).toContain("ca-detail");
+		expect(html).toContain("Show more");
+		expect(html).toContain("Hidden content");
+	}, 30_000);
+
+	it("renders ExternalLink with target=_blank for https", async () => {
+		const source = '<ExternalLink href="https://example.com">Click</ExternalLink>';
+		const html = await render(source);
+		expect(html).toContain('target="_blank"');
+		expect(html).toContain("Click");
+	}, 30_000);
+
+	it("renders Hide as empty", async () => {
+		const source = "<Hide>This should not appear</Hide>";
+		const html = await render(source);
+		expect(html).toContain("<span></span>");
+	}, 30_000);
+
+	it("renders Points without content", async () => {
+		const source = "<Points />";
+		const html = await render(source);
+		expect(html).toContain("ca-points");
+		expect(html).toContain("no-content");
+	}, 30_000);
+
+	it("renders Mermaid component", async () => {
+		const source = '<Mermaid chart="graph TD; A-->B;" />';
+		const html = await render(source);
+		expect(html).toContain("ca-mermaid");
+		expect(html).toContain("mermaid");
+	}, 30_000);
+
+	it("renders markdown links as ExternalLink via component map", async () => {
+		const source = "[Google](https://google.com)";
+		const html = await render(source);
+		expect(html).toContain('target="_blank"');
+		expect(html).toContain("Google");
+	}, 30_000);
+
+	it("renders internal markdown links without target=_blank", async () => {
+		const source = "[Section](#section)";
+		const html = await render(source);
+		expect(html).not.toContain('target="_blank"');
+		expect(html).toContain('href="#section"');
+	}, 30_000);
+
+	it("strips image imports and resolves paths", async () => {
+		const source = `---
+title: "Test"
+---
+import testImg from '@images/cloud_assignments/ca1/test.png'
+
+<Screenshot image={testImg} alt="Test" />`;
+		const html = await render(source);
+		expect(html).toContain("images/ca1/test.png");
+	}, 30_000);
+});
+
+describe("renderDocument", () => {
+	it("returns a complete HTML document", async () => {
+		const html = await renderDocument("# Hello");
+		expect(html).toMatch(/^<!DOCTYPE html>/);
+		expect(html).toContain("<html lang=\"en\">");
+		expect(html).toContain("<body>");
+		expect(html).toContain("</body>");
+		expect(html).toContain("<h1>Hello</h1>");
+	}, 30_000);
+
+	it("includes a style tag for CSS", async () => {
+		const html = await renderDocument("# Hello");
+		expect(html).toContain("<style>");
+		expect(html).toContain("</style>");
+	}, 30_000);
+
+	it("includes title when provided", async () => {
+		const html = await renderDocument("# Hello", "assignment-2");
+		expect(html).toContain("<title>assignment-2</title>");
+	}, 30_000);
+
+	it("omits title when not provided", async () => {
+		const html = await renderDocument("# Hello");
+		expect(html).not.toContain("<title>");
+	}, 30_000);
+
+	it("sets charset and viewport", async () => {
+		const html = await renderDocument("# Hello");
+		expect(html).toContain('charset="UTF-8"');
+		expect(html).toContain('name="viewport"');
+	}, 30_000);
+});

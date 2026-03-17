@@ -1,0 +1,324 @@
+/* ── Callout base styles ── */
+.ca-important,
+.ca-info,
+.ca-hint,
+.ca-instructions,
+.ca-vibecheck,
+.ca-notice,
+.ca-reflect,
+.ca-celebrate,
+.ca-points {
+	margin-top: 1em;
+	position: relative;
+	padding: .25em 1em;
+	border-radius: .5em;
+}
+
+.ca-important > strong,
+.ca-info > strong,
+.ca-hint > strong,
+.ca-instructions > strong,
+.ca-vibecheck > strong,
+.ca-notice > strong,
+.ca-reflect > strong,
+.ca-celebrate > strong {
+	position: absolute;
+	top: -1em;
+	padding: 0em .5em;
+	border-radius: 1em;
+}
+
+/* Important */
+.ca-important { border: 5px solid #E6501B; background: #fef6f3; }
+.ca-important > strong { color: #C3110C; background: #fef6f3; }
+
+/* Info */
+.ca-info { border: 5px solid #8CE4FF; background: #f9feff; }
+.ca-info > strong { color: #00C3FF; background: #f9feff; }
+
+/* Hint */
+.ca-hint { border: 5px solid #E6C31B; background: #fefdf3; }
+.ca-hint > strong { color: #B89B00; background: #fefdf3; }
+
+/* Instructions */
+.ca-instructions { border: 5px solid #34D399; background: #f0fdf4; }
+.ca-instructions > strong { color: #16A34A; background: #f0fdf4; }
+
+/* VibeCheck */
+.ca-vibecheck { border: 5px solid #B266FF; background: #faf5ff; }
+.ca-vibecheck > strong { color: #8A2BE2; background: #faf5ff; }
+
+/* Notice */
+.ca-notice { border: 5px solid #B0B0B0; background: #f7f7f7; }
+.ca-notice > strong { color: #808080; background: #f7f7f7; }
+
+/* Reflect */
+.ca-reflect { border: 5px solid #F0A0B0; background: #fef5f7; }
+.ca-reflect > strong { color: #D45D79; background: #fef5f7; }
+
+/* Celebrate */
+.ca-celebrate { border: 5px solid #c4a8e0; background: linear-gradient(135deg, #fdf2f2, #fdf0fa, #f0f0fd, #edf8fd, #f0fdf4, #fefdf2); }
+.ca-celebrate > strong { color: #9b6fbf; background: #fdf2f2; }
+
+/* Points */
+.ca-points {
+	margin-bottom: .5em;
+	margin-left: auto;
+	margin-right: auto;
+	width: fit-content;
+	min-width: 10em;
+	border: 5px double #14B8A6;
+	background: #F0FDFA;
+	text-align: center;
+}
+.ca-points > strong { color: #0F766E; }
+.ca-points.has-content > strong {
+	position: absolute;
+	top: -1em;
+	left: 50%;
+	transform: translateX(-50%);
+	white-space: nowrap;
+	padding: 0em .5em;
+	border-radius: 1em;
+	background: #F0FDFA;
+}
+.ca-points.no-content { margin-top: .5em; }
+
+/* ── Editor ── */
+.ca-editor {
+	--red: rgb(237, 106, 94);
+	--yellow: rgb(245, 191, 79);
+	--green: rgb(97, 195, 83);
+	--ed-stroke: rgb(229,229,229);
+	--ed-bg: white;
+	--ed-bg-menu: rgb(248,248,248);
+	--ed-stroke-tab: rgb(238, 238, 238);
+	--ed-active: rgb(0, 116, 217);
+	--ed-text: black;
+	font-family: system-ui;
+	margin: .5em 0;
+}
+
+.ca-editor .editor-window {
+	background: var(--ed-bg);
+	border: 1px solid var(--ed-stroke);
+	border-radius: .5em;
+}
+
+.ca-editor .editor-bar {
+	display: flex;
+	flex-flow: row nowrap;
+	background: var(--ed-bg-menu);
+	border-radius: .5em .5em 0 0;
+}
+
+.ca-editor .editor-tab {
+	background: var(--ed-bg);
+	padding: .5em 1em;
+	border-top: 2px solid var(--ed-active);
+	white-space: nowrap;
+}
+
+.ca-editor .editor-tab-fill {
+	width: 100%;
+	border-bottom: 1px solid var(--ed-stroke-tab);
+	border-left: 1px solid var(--ed-stroke-tab);
+}
+
+.ca-editor .editor-content {
+	padding: .5em;
+	border-radius: 0 .5em;
+}
+
+.ca-editor .macdots {
+	display: flex;
+	flex-flow: row nowrap;
+	align-items: center;
+	gap: .5em;
+	padding: .5em 1em;
+	border-bottom: 1px solid var(--ed-stroke-tab);
+	border-right: 1px solid var(--ed-stroke-tab);
+}
+
+.ca-editor .macdot-red,
+.ca-editor .macdot-yellow,
+.ca-editor .macdot-green {
+	border-radius: 50%;
+	width: 1em;
+	height: 1em;
+	flex: 0 0 auto;
+}
+.ca-editor .macdot-red { background-color: var(--red); }
+.ca-editor .macdot-yellow { background-color: var(--yellow); }
+.ca-editor .macdot-green { background-color: var(--green); }
+
+/* ── Terminal ── */
+.ca-terminal {
+	--red: rgb(237, 106, 94);
+	--yellow: rgb(245, 191, 79);
+	--green: rgb(97, 195, 83);
+	--term-bg: #1F1E1E;
+	--term-bg-menu: #393838;
+	--term-stroke: rgb(106,106,105);
+	--term-ui: white;
+	--term-text: white;
+	font-family: system-ui;
+	margin: .5em 0;
+}
+
+.ca-terminal .terminal-bar {
+	background: var(--term-bg-menu);
+	display: flex;
+	flex-flow: row nowrap;
+	align-items: center;
+	gap: .5em;
+	padding: .5em 1em;
+	color: var(--term-ui);
+	border-left: 1px solid var(--term-stroke);
+	border-top: 1px solid var(--term-stroke);
+	border-right: 1px solid var(--term-stroke);
+	border-bottom: 1px solid black;
+	border-radius: .5em .5em 0 0;
+}
+
+.ca-terminal .terminal-content {
+	background: var(--term-bg);
+	border-radius: 0 0 .5em .5em;
+	border-left: 1px solid var(--term-stroke);
+	border-right: 1px solid var(--term-stroke);
+	border-bottom: 1px solid var(--term-stroke);
+}
+
+.ca-terminal .macdot-red,
+.ca-terminal .macdot-yellow,
+.ca-terminal .macdot-green {
+	border-radius: 50%;
+	width: 1em;
+	height: 1em;
+	flex: 0 0 auto;
+}
+.ca-terminal .macdot-red { background-color: var(--red); }
+.ca-terminal .macdot-yellow { background-color: var(--yellow); }
+.ca-terminal .macdot-green { background-color: var(--green); }
+
+/* ── Screenshot ── */
+.ca-screenshot {
+	--red: rgb(237, 106, 94);
+	--yellow: rgb(245, 191, 79);
+	--green: rgb(97, 195, 83);
+	--bg: #268bd2;
+	--bg-address: white;
+	font-family: system-ui;
+	display: flex;
+	justify-content: center;
+	max-width: 100%;
+	margin: .5em 0;
+}
+
+.ca-screenshot .browser {
+	display: flex;
+	flex-flow: column nowrap;
+	max-width: 100%;
+}
+
+.ca-screenshot .browser-bar {
+	background-color: var(--bg);
+	display: flex;
+	align-items: center;
+	gap: .5em;
+	padding: .5em 1em;
+	border-radius: .5em .5em 0 0;
+}
+
+.ca-screenshot .macdot-red,
+.ca-screenshot .macdot-yellow,
+.ca-screenshot .macdot-green {
+	border-radius: 50%;
+	width: 1em;
+	height: 1em;
+	flex: 0 0 auto;
+}
+.ca-screenshot .macdot-red { background-color: var(--red); }
+.ca-screenshot .macdot-yellow { background-color: var(--yellow); }
+.ca-screenshot .macdot-green { background-color: var(--green); }
+
+.ca-screenshot .address-bar {
+	background-color: var(--bg-address);
+	min-height: 1em;
+	padding: .125em 1em;
+	width: 100%;
+	border-radius: 2em;
+	margin-left: .5em;
+	display: flex;
+	align-items: center;
+	font-size: .875em;
+	white-space: nowrap;
+	overflow-x: scroll;
+}
+
+.ca-screenshot .browser-content {
+	border: 1px solid var(--bg);
+	position: relative;
+	display: flex;
+}
+
+.ca-screenshot .browser-content img {
+	width: 100%;
+	height: auto;
+}
+
+.ca-screenshot .cursor {
+	position: absolute;
+	left: var(--x);
+	top: var(--y);
+	transform: scale(var(--scale)) rotate(var(--rotate));
+}
+
+.ca-screenshot .cursor svg {
+	width: 5.821mm;
+	height: 5.821mm;
+}
+
+/* ── Detail ── */
+.ca-detail {
+	margin-top: 1em;
+	position: relative;
+	padding: .25em 1em;
+	border: 5px dashed #E8A946;
+	border-radius: .5em;
+	background: #fef8ed;
+}
+
+.ca-detail summary {
+	position: absolute;
+	top: -1em;
+	background: #fef8ed;
+	padding: 0em .5em;
+	color: #C07B1A;
+	border-radius: 1em;
+	cursor: pointer;
+	font-weight: bold;
+}
+
+.ca-detail details[open] + .hint {
+	display: none;
+}
+
+.ca-detail .hint {
+	margin: 0;
+	text-align: center;
+	font-weight: normal;
+	font-style: italic;
+	opacity: 0.6;
+	cursor: pointer;
+}
+
+/* ── Mermaid ── */
+.ca-mermaid pre.mermaid {
+	text-align: center;
+}
+
+/* ── Shiki code blocks ── */
+.shiki {
+	padding: 1em;
+}

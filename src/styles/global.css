@@ -1,0 +1,107 @@
+* {
+	margin: 0;
+	padding: 0;
+	box-sizing: border-box;
+}
+
+html {
+	font-family: system-ui, sans-serif;
+	line-height: 1.6;
+}
+
+body {
+	--p: 2rem;
+	padding: var(--p);
+	margin: 0 auto;
+	max-width: calc(8.27in - 2 * var(--p));
+	background: #ffffff;
+	color: #000;
+	font-size: 16px;
+	font-family: 'PT Serif';
+}
+
+@media print {
+	.back-to-home {
+		display: none;
+	}
+	html {
+		print-color-adjust: exact;
+	}
+}
+
+h1, h2, h3, h4, h5, h6 {
+	color: #000;
+	line-height: 1.2;
+}
+
+h1 {
+	margin: 1em 0 .75em 0;
+}
+
+h2 {
+	margin: .75em 0 .5em 0;
+}
+
+h3 {
+	margin: .75em 0 .5em 0;
+}
+
+h4 {
+	margin: .5em 0 .25em 0;
+}
+
+a {
+	color: #0000EE;
+}
+
+a:visited {
+	color: #551A8B;
+}
+
+p {
+	color: #333;
+	margin: .5em 0;
+}
+
+ul li, ol li {
+	color: #333;
+	margin-left: 2em;
+}
+
+strong {
+	color: inherit;
+}
+
+pre, code {
+	font-family: monospace;
+	font-size: 13px;
+}
+
+pre {
+	overflow-x: auto;
+}
+
+.astro-code {
+	padding: 1em;
+}
+
+table {
+	color: #333;
+	border-spacing: 0;
+	display: block;
+	overflow-x: scroll;
+}
+
+table tbody tr:nth-child(2n + 1) {
+	background-color: rgba(0,0,0,.05);
+}
+
+table thead th {
+	border-bottom: 1px solid #dee2e6;
+	border-top: 2px solid #dee2e6;
+	padding: 0 .25em;
+}
+
+table tbody td {
+	border-top: 1px solid #dee2e6;
+}

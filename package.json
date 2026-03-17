@@ -1,0 +1,31 @@
+{
+	"name": "cloud-assignment-obsidian-plugin",
+	"version": "2.0.0",
+	"description": "Self-contained Obsidian plugin that renders cloud assignment MDX files",
+	"main": "dist/main.js",
+	"type": "module",
+	"scripts": {
+		"dev": "node esbuild.config.mjs",
+		"build": "node esbuild.config.mjs production",
+		"build:standalone": "node bin/build-standalone",
+		"test": "vitest run --coverage",
+		"test:watch": "vitest"
+	},
+	"dependencies": {
+		"@mdx-js/mdx": "^3",
+		"hast-util-to-string": "^3",
+		"preact": "^10",
+		"preact-render-to-string": "^6",
+		"remark-toc": "^9",
+		"shiki": "^3",
+		"unist-util-visit": "^5"
+	},
+	"devDependencies": {
+		"@vitest/coverage-v8": "^4.0.18",
+		"builtin-modules": "^4.0.0",
+		"esbuild": "^0.25.0",
+		"obsidian": "latest",
+		"typescript": "^5.5",
+		"vitest": "^4.0.18"
+	}
+}
