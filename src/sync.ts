@@ -115,7 +115,7 @@ export async function pushDocument(
 		await createDocument(serverUrl, token, slug, name);
 		resp = await request(serverUrl, token, `/api/documents/${slug}/`, {
 			method: "POST",
-			body: JSON.stringify({ mdx_source: mdxSource, base_version: baseVersion }),
+			body: JSON.stringify({ mdx_source: mdxSource, base_version: 0 }),
 		});
 	}
 	if (resp.status === 409) return resp.json();

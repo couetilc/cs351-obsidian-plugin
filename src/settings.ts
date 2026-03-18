@@ -35,10 +35,13 @@ export class SyncSettingTab extends PluginSettingTab {
 					.setPlaceholder("https://www.cs351.cloud")
 					.setValue(this.plugin.settings.serverUrl)
 					.onChange(async (value) => {
-						this.plugin.settings.serverUrl = value.replace(
-							/\/+$/,
-							""
-						);
+						const newUrl = value.replace(/\/+$/, "");
+						if (newUrl !== this.plugin.settings.serverUrl) {
+							this.plugin.settings.serverUrl = newUrl;
+							this.plugin.settings.versions = {};
+							this.plugin.settings.token = "";
+							this.plugin.settings.userName = "";
+						}
 						await this.plugin.saveSettings();
 					})
 			);

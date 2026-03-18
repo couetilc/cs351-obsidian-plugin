@@ -287,7 +287,11 @@ export default class MdxPlugin extends Plugin {
 			await this.app.vault.adapter.write(filePath, result.mdx_source);
 			this.settings.versions[active.slug] = result.version;
 			await this.saveSettings();
-			new Notice(`Pulled v${result.version} by ${result.created_by}`);
+			if (result.version === 0) {
+				new Notice("No versions on server yet.");
+			} else {
+				new Notice(`Pulled v${result.version} by ${result.created_by}`);
+			}
 			this.updateSyncStatus(this.getPreviewView());
 		} catch (err) {
 			const message = err instanceof Error ? err.message : String(err);
@@ -303,13 +307,26 @@ export default class MdxPlugin extends Plugin {
 		}
 		const baseVersion = this.settings.versions[active.slug] ?? 0;
 		try {
-			const result = await pushDocument(
+			let result = await pushDocument(
 				this.settings.serverUrl,
 				this.settings.token,
 				active.slug,
 				active.source,
 				baseVersion
 			);
+			if ("error" in result) {
+				const conflict = result as ConflictError;
+				if (conflict.server_version === 0 && baseVersion !== 0) {
+					// Stale local version — server has no versions, retry with 0
+					result = await pushDocument(
+						this.settings.serverUrl,
+						this.settings.token,
+						active.slug,
+						active.source,
+						0
+					);
+				}
+			}
 			if ("error" in result) {
 				const conflict = result as ConflictError;
 				new Notice(

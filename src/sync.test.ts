@@ -142,6 +142,59 @@ describe("pushDocument", () => {
 		expect(fetch).toHaveBeenCalledTimes(3);
 	});
 
+	it("resets base_version to 0 on retry after auto-create", async () => {
+		let callCount = 0;
+		globalThis.fetch = vi.fn().mockImplementation((url: string, opts: RequestInit) => {
+			callCount++;
+			if (callCount === 1) {
+				return Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve({ error: "not found" }) });
+			}
+			if (callCount === 2) {
+				return Promise.resolve({ ok: true, status: 201, json: () => Promise.resolve({ slug: "new-doc", name: "New Doc" }) });
+			}
+			return Promise.resolve({ ok: true, status: 201, json: () => Promise.resolve({ version: 1 }) });
+		});
+
+		await pushDocument(SERVER, TOKEN, "new-doc", "# Hello", 5);
+		// Third call (retry push) must use base_version: 0, not 5
+		const retryCall = vi.mocked(fetch).mock.calls[2];
+		const retryBody = JSON.parse(retryCall[1]?.body as string);
+		expect(retryBody.base_version).toBe(0);
+	});
+
+	it("handles create returning 409 (race condition) then retries push", async () => {
+		let callCount = 0;
+		globalThis.fetch = vi.fn().mockImplementation(() => {
+			callCount++;
+			if (callCount === 1) {
+				return Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve({ error: "not found" }) });
+			}
+			if (callCount === 2) {
+				// create returns 409 — already exists, that's fine
+				return Promise.resolve({ ok: false, status: 409, json: () => Promise.resolve({ error: "slug already exists" }) });
+			}
+			return Promise.resolve({ ok: true, status: 201, json: () => Promise.resolve({ version: 1 }) });
+		});
+
+		const result = await pushDocument(SERVER, TOKEN, "new-doc", "# Hello", 0);
+		expect(result).toEqual({ version: 1 });
+		expect(fetch).toHaveBeenCalledTimes(3);
+	});
+
+	it("propagates SyncError when create fails with 500", async () => {
+		let callCount = 0;
+		globalThis.fetch = vi.fn().mockImplementation(() => {
+			callCount++;
+			if (callCount === 1) {
+				return Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve({ error: "not found" }) });
+			}
+			// create returns 500
+			return Promise.resolve({ ok: false, status: 500, json: () => Promise.resolve({ error: "server error" }) });
+		});
+
+		await expect(pushDocument(SERVER, TOKEN, "new-doc", "# Hello", 0)).rejects.toThrow(SyncError);
+	});
+
 	it("returns conflict on 409", async () => {
 		const conflict = {
 			error: "conflict" as const,
