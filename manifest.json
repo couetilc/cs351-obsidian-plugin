@@ -1,7 +1,7 @@
 {
   "id": "cloud-assignment",
   "name": "Cloud Assignment",
-  "version": "2.0.5",
+  "version": "2.0.6",
   "minAppVersion": "1.5.0",
   "description": "Self-contained preview and standalone export of cloud assignment MDX files",
   "author": "cloud-assignments",
