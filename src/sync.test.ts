@@ -6,6 +6,11 @@ import {
 	pushDocument,
 	releaseDocument,
 	listVersions,
+	fetchImageManifest,
+	uploadImage,
+	downloadImage,
+	extractImagePaths,
+	hashArrayBuffer,
 	SyncError,
 } from "./sync";
 
@@ -270,5 +275,137 @@ describe("SyncError", () => {
 		expect(err.message).toBe("test");
 		expect(err.status).toBe(404);
 		expect(err).toBeInstanceOf(Error);
+	});
+});
+
+describe("fetchImageManifest", () => {
+	it("returns manifest on success", async () => {
+		const images = [{ path: "images/ca1/test.png", content_hash: "abc123" }];
+		globalThis.fetch = mockFetch(200, { images });
+		const result = await fetchImageManifest(SERVER, TOKEN);
+		expect(result).toEqual(images);
+	});
+
+	it("throws on failure", async () => {
+		globalThis.fetch = mockFetch(500, { error: "server error" });
+		await expect(fetchImageManifest(SERVER, TOKEN)).rejects.toThrow(SyncError);
+	});
+});
+
+describe("uploadImage", () => {
+	it("sends multipart form data", async () => {
+		globalThis.fetch = vi.fn().mockResolvedValue({
+			ok: true, status: 200,
+			json: () => Promise.resolve({ path: "images/ca1/test.png", content_hash: "abc" }),
+		});
+		const data = new ArrayBuffer(4);
+		await uploadImage(SERVER, TOKEN, "images/ca1/test.png", data);
+		expect(fetch).toHaveBeenCalledWith(
+			`${SERVER}/api/images/`,
+			expect.objectContaining({
+				method: "POST",
+				headers: { Authorization: `Bearer ${TOKEN}` },
+			}),
+		);
+		const call = vi.mocked(fetch).mock.calls[0];
+		expect(call[1]?.body).toBeInstanceOf(FormData);
+	});
+
+	it("throws on failure", async () => {
+		globalThis.fetch = mockFetch(500, { error: "server error" });
+		await expect(
+			uploadImage(SERVER, TOKEN, "images/ca1/test.png", new ArrayBuffer(4)),
+		).rejects.toThrow(SyncError);
+	});
+});
+
+describe("downloadImage", () => {
+	it("returns ArrayBuffer on success", async () => {
+		const buf = new ArrayBuffer(4);
+		globalThis.fetch = vi.fn().mockResolvedValue({
+			ok: true, status: 200,
+			arrayBuffer: () => Promise.resolve(buf),
+		});
+		const result = await downloadImage(SERVER, TOKEN, "images/ca1/test.png");
+		expect(result).toBe(buf);
+		expect(fetch).toHaveBeenCalledWith(
+			`${SERVER}/api/images/images/ca1/test.png/`,
+			expect.objectContaining({
+				headers: { Authorization: `Bearer ${TOKEN}` },
+			}),
+		);
+	});
+
+	it("throws on 404", async () => {
+		globalThis.fetch = vi.fn().mockResolvedValue({
+			ok: false, status: 404,
+			arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
+		});
+		await expect(
+			downloadImage(SERVER, TOKEN, "images/ca1/test.png"),
+		).rejects.toThrow(SyncError);
+	});
+});
+
+describe("extractImagePaths", () => {
+	it("extracts @images/cloud_assignments/ paths", () => {
+		const source = `import foo from '@images/cloud_assignments/ca1/test.png'\n# Hello`;
+		expect(extractImagePaths(source)).toEqual(["images/ca1/test.png"]);
+	});
+
+	it("extracts relative paths", () => {
+		const source = `import bar from '../../images/cloud_assignments/ca2/img.png'`;
+		expect(extractImagePaths(source)).toEqual(["images/ca2/img.png"]);
+	});
+
+	it("extracts short @images/ paths", () => {
+		const source = `import img from '@images/ca1/test.png'`;
+		expect(extractImagePaths(source)).toEqual(["images/ca1/test.png"]);
+	});
+
+	it("returns empty for no image imports", () => {
+		const source = `import Editor from '@components/Editor.astro'\n# Hello`;
+		expect(extractImagePaths(source)).toEqual([]);
+	});
+
+	it("extracts multiple images", () => {
+		const source = [
+			"import a from '@images/cloud_assignments/ca1/one.png'",
+			"import b from '@images/cloud_assignments/ca2/two.png'",
+			"# Hello",
+		].join("\n");
+		expect(extractImagePaths(source)).toEqual([
+			"images/ca1/one.png",
+			"images/ca2/two.png",
+		]);
+	});
+
+	it("deduplicates are not handled (caller responsibility)", () => {
+		const source = [
+			"import a from '@images/cloud_assignments/ca1/same.png'",
+			"import b from '@images/cloud_assignments/ca1/same.png'",
+		].join("\n");
+		expect(extractImagePaths(source)).toEqual([
+			"images/ca1/same.png",
+			"images/ca1/same.png",
+		]);
+	});
+});
+
+describe("hashArrayBuffer", () => {
+	it("produces SHA-256 hex string", async () => {
+		const data = new TextEncoder().encode("hello");
+		const hash = await hashArrayBuffer(data.buffer as ArrayBuffer);
+		expect(hash).toBe(
+			"2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
+		);
+	});
+
+	it("returns different hash for different data", async () => {
+		const a = new TextEncoder().encode("a");
+		const b = new TextEncoder().encode("b");
+		const hashA = await hashArrayBuffer(a.buffer as ArrayBuffer);
+		const hashB = await hashArrayBuffer(b.buffer as ArrayBuffer);
+		expect(hashA).not.toBe(hashB);
 	});
 });

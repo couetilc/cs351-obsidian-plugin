@@ -9,6 +9,11 @@ import {
 	pullDocument,
 	pushDocument,
 	releaseDocument,
+	fetchImageManifest,
+	uploadImage,
+	downloadImage,
+	extractImagePaths,
+	hashArrayBuffer,
 	type ConflictError,
 } from "./sync";
 
@@ -239,6 +244,7 @@ export default class MdxPlugin extends Plugin {
 			if (!await adapter.exists("cloud-assignments")) {
 				await adapter.mkdir("cloud-assignments");
 			}
+			const mdxSources: string[] = [];
 			let created = 0;
 			for (const doc of docs) {
 				if (doc.latest_version === null) continue;
@@ -247,6 +253,8 @@ export default class MdxPlugin extends Plugin {
 					if (!this.settings.versions[doc.slug]) {
 						this.settings.versions[doc.slug] = doc.latest_version;
 					}
+					const source = await adapter.read(filePath);
+					mdxSources.push(source);
 					continue;
 				}
 				const detail = await pullDocument(
@@ -256,6 +264,7 @@ export default class MdxPlugin extends Plugin {
 				);
 				await adapter.write(filePath, detail.mdx_source);
 				this.settings.versions[doc.slug] = detail.version;
+				mdxSources.push(detail.mdx_source);
 				created++;
 			}
 			await this.saveSettings();
@@ -265,6 +274,7 @@ export default class MdxPlugin extends Plugin {
 				new Notice("All documents already synced.");
 			}
 			this.updateSyncStatus(this.getPreviewView());
+			await this.pullImages(mdxSources.join("\n"));
 		} catch (err) {
 			const message = err instanceof Error ? err.message : String(err);
 			new Notice(`Sync failed: ${message}`);
@@ -293,6 +303,7 @@ export default class MdxPlugin extends Plugin {
 				new Notice(`Pulled v${result.version} by ${result.created_by}`);
 			}
 			this.updateSyncStatus(this.getPreviewView());
+			await this.pullImages(result.mdx_source);
 		} catch (err) {
 			const message = err instanceof Error ? err.message : String(err);
 			new Notice(`Pull failed: ${message}`);
@@ -341,10 +352,67 @@ export default class MdxPlugin extends Plugin {
 				await this.saveSettings();
 				new Notice(`Pushed v${result.version}`);
 				this.updateSyncStatus(this.getPreviewView());
+				await this.pushImages(active.source);
 			}
 		} catch (err) {
 			const message = err instanceof Error ? err.message : String(err);
 			new Notice(`Push failed: ${message}`);
+		}
+	}
+
+	private async pushImages(mdxSource: string): Promise<void> {
+		const imagePaths = extractImagePaths(mdxSource);
+		if (imagePaths.length === 0) return;
+		const adapter = this.app.vault.adapter;
+		const manifest = await fetchImageManifest(
+			this.settings.serverUrl, this.settings.token,
+		);
+		const serverHashes = new Map(manifest.map((e) => [e.path, e.content_hash]));
+		let uploaded = 0;
+		for (const path of imagePaths) {
+			if (!await adapter.exists(path)) continue;
+			const data = await adapter.readBinary(path);
+			const localHash = await hashArrayBuffer(data);
+			if (serverHashes.get(path) === localHash) continue;
+			await uploadImage(
+				this.settings.serverUrl, this.settings.token, path, data,
+			);
+			uploaded++;
+		}
+		if (uploaded > 0) {
+			new Notice(`Pushed ${uploaded} image${uploaded > 1 ? "s" : ""}`);
+		}
+	}
+
+	private async pullImages(mdxSource: string): Promise<void> {
+		const imagePaths = extractImagePaths(mdxSource);
+		if (imagePaths.length === 0) return;
+		const adapter = this.app.vault.adapter;
+		const manifest = await fetchImageManifest(
+			this.settings.serverUrl, this.settings.token,
+		);
+		const serverHashes = new Map(manifest.map((e) => [e.path, e.content_hash]));
+		let downloaded = 0;
+		for (const path of imagePaths) {
+			const serverHash = serverHashes.get(path);
+			if (!serverHash) continue;
+			if (await adapter.exists(path)) {
+				const localData = await adapter.readBinary(path);
+				const localHash = await hashArrayBuffer(localData);
+				if (localHash === serverHash) continue;
+			}
+			const dir = path.substring(0, path.lastIndexOf("/"));
+			if (dir && !await adapter.exists(dir)) {
+				await adapter.mkdir(dir);
+			}
+			const data = await downloadImage(
+				this.settings.serverUrl, this.settings.token, path,
+			);
+			await adapter.writeBinary(path, data);
+			downloaded++;
+		}
+		if (downloaded > 0) {
+			new Notice(`Downloaded ${downloaded} image${downloaded > 1 ? "s" : ""}`);
 		}
 	}
 
