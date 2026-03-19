@@ -10,6 +10,7 @@ export class MdxPreviewView extends ItemView {
 	private iframe: HTMLIFrameElement | null = null;
 	private messageEl: HTMLDivElement | null = null;
 	private toolbarEl: HTMLDivElement | null = null;
+	private errorBannerEl: HTMLDivElement | null = null;
 	private exportBtn: HTMLButtonElement | null = null;
 	private loginBtn: HTMLButtonElement | null = null;
 	private syncBtn: HTMLButtonElement | null = null;
@@ -19,6 +20,13 @@ export class MdxPreviewView extends ItemView {
 	private helpBtn: HTMLButtonElement | null = null;
 	private helpEl: HTMLDivElement | null = null;
 	private statusEl: HTMLSpanElement | null = null;
+	private lastScrollTop = 0;
+	private scrollHandler = (): void => {
+		const scrollTop = this.iframe?.contentDocument?.documentElement?.scrollTop;
+		if (scrollTop !== undefined && scrollTop > 0) {
+			this.lastScrollTop = scrollTop;
+		}
+	};
 	onExport: (() => void) | null = null;
 	onLogin: (() => void) | null = null;
 	onSync: (() => void) | null = null;
@@ -97,6 +105,10 @@ export class MdxPreviewView extends ItemView {
 		container.style.height = "100%";
 		container.appendChild(this.iframe);
 
+		this.iframe.addEventListener("load", () => {
+			this.iframe?.contentDocument?.addEventListener("scroll", this.scrollHandler);
+		});
+
 		this.registerEvent(
 			this.app.workspace.on("active-leaf-change", (leaf) => {
 				if (leaf === this.leaf) {
@@ -110,8 +122,11 @@ export class MdxPreviewView extends ItemView {
 	}
 
 	async onClose(): Promise<void> {
+		this.iframe?.contentDocument?.removeEventListener("scroll", this.scrollHandler);
+		this.lastScrollTop = 0;
 		this.iframe = null;
 		this.messageEl = null;
+		this.errorBannerEl = null;
 		this.toolbarEl = null;
 		this.exportBtn = null;
 		this.loginBtn = null;
@@ -127,8 +142,9 @@ export class MdxPreviewView extends ItemView {
 	setHtml(html: string): void {
 		if (!this.iframe) return;
 		this.hideOverlay();
+		this.clearRenderError();
 
-		const scrollTop = this.iframe.contentDocument?.documentElement?.scrollTop ?? 0;
+		const scrollTop = this.lastScrollTop;
 
 		this.iframe.srcdoc = html;
 
@@ -175,6 +191,27 @@ export class MdxPreviewView extends ItemView {
 		this.messageEl.style.display = "flex";
 		if (this.iframe) this.iframe.style.display = "none";
 		if (this.toolbarEl) this.toolbarEl.style.display = "none";
+	}
+
+	showRenderError(msg: string): void {
+		if (!this.errorBannerEl) {
+			const container = this.containerEl.children[1] as HTMLElement;
+			this.errorBannerEl = container.createDiv({ cls: "mdx-render-error-banner" });
+			this.errorBannerEl.style.cssText =
+				"padding:8px 12px;background:#fef2f2;color:#991b1b;border-bottom:1px solid #fca5a5;" +
+				"font-family:monospace;font-size:12px;white-space:pre-wrap;overflow:auto;max-height:120px;";
+			if (this.iframe) {
+				container.insertBefore(this.errorBannerEl, this.iframe);
+			}
+		}
+		this.errorBannerEl.textContent = msg;
+	}
+
+	clearRenderError(): void {
+		if (this.errorBannerEl) {
+			this.errorBannerEl.remove();
+			this.errorBannerEl = null;
+		}
 	}
 
 	private toggleHelp(): void {

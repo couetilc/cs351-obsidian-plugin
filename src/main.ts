@@ -171,7 +171,6 @@ export default class MdxPlugin extends Plugin {
 		}
 
 		try {
-			view.showMessage("Rendering…");
 			let html = await renderDocument(active.source);
 			html = html.replace(
 				/(<img[^>]*src=["'])(images\/[^"']+)(["'])/gi,
@@ -184,7 +183,7 @@ export default class MdxPlugin extends Plugin {
 		} catch (err) {
 			const message =
 				err instanceof Error ? err.message : String(err);
-			view.showError(`Render error: ${message}`);
+			view.showRenderError(`Render error: ${message}`);
 		}
 	}
 
