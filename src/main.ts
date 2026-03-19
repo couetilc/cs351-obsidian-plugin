@@ -448,7 +448,7 @@ export default class MdxPlugin extends Plugin {
 				version,
 				html
 			);
-			new Notice(`Released v${result.version} to assignment ${result.assignment_id}`);
+			new Notice(`Released v${result.version} to ${result.assignment_name}`);
 		} catch (err) {
 			const message = err instanceof Error ? err.message : String(err);
 			if (message === "Failed to release document") {

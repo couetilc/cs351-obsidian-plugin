@@ -34,6 +34,7 @@ export interface VersionInfo {
 export interface ReleaseResult {
 	version: number;
 	assignment_id: number;
+	assignment_name: string;
 }
 
 export interface ImageManifestEntry {
