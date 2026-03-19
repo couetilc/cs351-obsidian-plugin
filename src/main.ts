@@ -359,9 +359,6 @@ export default class MdxPlugin extends Plugin {
 			return;
 		}
 
-		const assignmentId = await this.promptAssignmentId();
-		if (assignmentId === null) return;
-
 		try {
 			let html = await renderDocument(active.source, active.slug);
 			const fontStyles = await embedFonts();
@@ -381,25 +378,17 @@ export default class MdxPlugin extends Plugin {
 				this.settings.token,
 				active.slug,
 				version,
-				assignmentId,
 				html
 			);
 			new Notice(`Released v${result.version} to assignment ${result.assignment_id}`);
 		} catch (err) {
 			const message = err instanceof Error ? err.message : String(err);
-			new Notice(`Release failed: ${message}`);
+			if (message === "Failed to release document") {
+				new Notice("No release exists for this document. Release it from the web UI first.");
+			} else {
+				new Notice(`Release failed: ${message}`);
+			}
 		}
-	}
-
-	private async promptAssignmentId(): Promise<number | null> {
-		const input = window.prompt("Enter CloudAssignment ID to release to:");
-		if (!input) return null;
-		const id = parseInt(input, 10);
-		if (isNaN(id)) {
-			new Notice("Invalid assignment ID.");
-			return null;
-		}
-		return id;
 	}
 
 	private updateSyncStatus(view: MdxPreviewView | null): void {

@@ -221,7 +221,7 @@ describe("releaseDocument", () => {
 		globalThis.fetch = mockFetch(200, { version: 3, assignment_id: 1 });
 
 		const result = await releaseDocument(
-			SERVER, TOKEN, "a1", 3, 1, "<h1>Hi</h1>"
+			SERVER, TOKEN, "a1", 3, "<h1>Hi</h1>"
 		);
 		expect(result).toEqual({ version: 3, assignment_id: 1 });
 		expect(fetch).toHaveBeenCalledWith(
@@ -230,7 +230,6 @@ describe("releaseDocument", () => {
 				method: "POST",
 				body: JSON.stringify({
 					version: 3,
-					assignment_id: 1,
 					rendered_html: "<h1>Hi</h1>",
 				}),
 			})
@@ -240,7 +239,7 @@ describe("releaseDocument", () => {
 	it("throws on failure", async () => {
 		globalThis.fetch = mockFetch(400, { error: "bad request" });
 		await expect(
-			releaseDocument(SERVER, TOKEN, "a1", 999, 1, "")
+			releaseDocument(SERVER, TOKEN, "a1", 999, "")
 		).rejects.toThrow(SyncError);
 	});
 });

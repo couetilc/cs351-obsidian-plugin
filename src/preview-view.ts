@@ -193,8 +193,9 @@ export class MdxPreviewView extends ItemView {
 			"<strong>Pull</strong> — download the latest version of the current document.<br>" +
 			"<strong>Push</strong> — upload your local edits as a new version on the server. " +
 			"Only the MDX source is saved; the server does not render it.<br>" +
-			"<strong>Release</strong> — render the current document to HTML and publish it " +
-			"to the server, where students can view it on the instructional site.";
+			"<strong>Release</strong> — render the current document to HTML and update the " +
+			"published release on the server. The document must first be released to an " +
+			"assignment from the web UI.";
 		if (this.toolbarEl?.nextSibling) {
 			container.insertBefore(this.helpEl, this.toolbarEl.nextSibling);
 		}

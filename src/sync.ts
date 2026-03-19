@@ -128,7 +128,6 @@ export async function releaseDocument(
 	token: string,
 	slug: string,
 	version: number,
-	assignmentId: number,
 	renderedHtml: string
 ): Promise<ReleaseResult> {
 	const resp = await request(
@@ -139,7 +138,6 @@ export async function releaseDocument(
 			method: "POST",
 			body: JSON.stringify({
 				version,
-				assignment_id: assignmentId,
 				rendered_html: renderedHtml,
 			}),
 		}
