@@ -6,6 +6,7 @@ import {
 	pushDocument,
 	releaseDocument,
 	listVersions,
+	listAssignments,
 	fetchImageManifest,
 	uploadImage,
 	downloadImage,
@@ -241,11 +242,50 @@ describe("releaseDocument", () => {
 		);
 	});
 
+	it("includes assignment_id when provided", async () => {
+		globalThis.fetch = mockFetch(200, { version: 3, assignment_id: 42, assignment_name: "CA1" });
+
+		await releaseDocument(SERVER, TOKEN, "a1", 3, "<h1>Hi</h1>", 42);
+		expect(fetch).toHaveBeenCalledWith(
+			`${SERVER}/api/documents/a1/release/`,
+			expect.objectContaining({
+				method: "POST",
+				body: JSON.stringify({
+					version: 3,
+					rendered_html: "<h1>Hi</h1>",
+					assignment_id: 42,
+				}),
+			})
+		);
+	});
+
 	it("throws on failure", async () => {
 		globalThis.fetch = mockFetch(400, { error: "bad request" });
 		await expect(
 			releaseDocument(SERVER, TOKEN, "a1", 999, "")
 		).rejects.toThrow(SyncError);
+	});
+});
+
+describe("listAssignments", () => {
+	it("returns assignments on success", async () => {
+		const assignments = [
+			{ id: 1, name: "CA1", course_name: "CS351" },
+			{ id: 2, name: "CA2", course_name: "CS351" },
+		];
+		globalThis.fetch = mockFetch(200, { assignments });
+
+		const result = await listAssignments(SERVER, TOKEN);
+		expect(result).toEqual(assignments);
+		expect(fetch).toHaveBeenCalledWith(
+			`${SERVER}/api/assignments/`,
+			expect.objectContaining({ method: "GET" })
+		);
+	});
+
+	it("throws SyncError on failure", async () => {
+		globalThis.fetch = mockFetch(500, { error: "server error" });
+		await expect(listAssignments(SERVER, TOKEN)).rejects.toThrow(SyncError);
 	});
 });
 

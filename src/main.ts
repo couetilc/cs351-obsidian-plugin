@@ -9,13 +9,16 @@ import {
 	pullDocument,
 	pushDocument,
 	releaseDocument,
+	listAssignments,
 	fetchImageManifest,
 	uploadImage,
 	downloadImage,
 	extractImagePaths,
 	hashArrayBuffer,
+	SyncError,
 	type ConflictError,
 } from "./sync";
+import { AssignmentPickerModal } from "./assignment-picker-modal";
 
 export default class MdxPlugin extends Plugin {
 	private renderTimer: ReturnType<typeof setTimeout> | null = null;
@@ -428,35 +431,71 @@ export default class MdxPlugin extends Plugin {
 		}
 
 		try {
-			let html = await renderDocument(active.source, active.slug);
-			const fontStyles = await embedFonts();
-			html = html.replace(
-				"</head>",
-				`<style>${fontStyles}</style>\n<style>.no-standalone{display:none!important}</style>\n</head>`
-			);
-			const adapter = this.app.vault.adapter;
-			html = await inlineImages(html, "", async (imgPath) => {
-				const vaultPath = imgPath.startsWith("/") ? imgPath.slice(1) : imgPath;
-				const arrayBuffer = await adapter.readBinary(vaultPath);
-				return Buffer.from(arrayBuffer);
-			});
+			const html = await this.renderReleaseHtml(active.source, active.slug);
 
-			const result = await releaseDocument(
-				this.settings.serverUrl,
-				this.settings.token,
-				active.slug,
-				version,
-				html
-			);
-			new Notice(`Released v${result.version} to ${result.assignment_name}`);
+			try {
+				const result = await releaseDocument(
+					this.settings.serverUrl,
+					this.settings.token,
+					active.slug,
+					version,
+					html
+				);
+				new Notice(`Released v${result.version} to ${result.assignment_name}`);
+			} catch (err) {
+				if (err instanceof SyncError && err.status === 400) {
+					await this.pickAssignmentAndRelease(active.slug, version, html);
+				} else {
+					throw err;
+				}
+			}
 		} catch (err) {
 			const message = err instanceof Error ? err.message : String(err);
-			if (message === "Failed to release document") {
-				new Notice("No release exists for this document. Release it from the web UI first.");
-			} else {
+			new Notice(`Release failed: ${message}`);
+		}
+	}
+
+	private async pickAssignmentAndRelease(slug: string, version: number, html: string): Promise<void> {
+		const assignments = await listAssignments(
+			this.settings.serverUrl,
+			this.settings.token
+		);
+		if (assignments.length === 0) {
+			new Notice("No assignments found.");
+			return;
+		}
+		new AssignmentPickerModal(this.app, assignments, async (assignment) => {
+			try {
+				const result = await releaseDocument(
+					this.settings.serverUrl,
+					this.settings.token,
+					slug,
+					version,
+					html,
+					assignment.id
+				);
+				new Notice(`Released v${result.version} to ${result.assignment_name}`);
+			} catch (err) {
+				const message = err instanceof Error ? err.message : String(err);
 				new Notice(`Release failed: ${message}`);
 			}
-		}
+		}).open();
+	}
+
+	private async renderReleaseHtml(source: string, slug: string): Promise<string> {
+		let html = await renderDocument(source, slug);
+		const fontStyles = await embedFonts();
+		html = html.replace(
+			"</head>",
+			`<style>${fontStyles}</style>\n<style>.no-standalone{display:none!important}</style>\n</head>`
+		);
+		const adapter = this.app.vault.adapter;
+		html = await inlineImages(html, "", async (imgPath) => {
+			const vaultPath = imgPath.startsWith("/") ? imgPath.slice(1) : imgPath;
+			const arrayBuffer = await adapter.readBinary(vaultPath);
+			return Buffer.from(arrayBuffer);
+		});
+		return html;
 	}
 
 	private updateSyncStatus(view: MdxPreviewView | null): void {

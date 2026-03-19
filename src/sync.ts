@@ -37,6 +37,12 @@ export interface ReleaseResult {
 	assignment_name: string;
 }
 
+export interface AssignmentSummary {
+	id: number;
+	name: string;
+	course_name: string;
+}
+
 export interface ImageManifestEntry {
 	path: string;
 	content_hash: string;
@@ -134,22 +140,37 @@ export async function releaseDocument(
 	token: string,
 	slug: string,
 	version: number,
-	renderedHtml: string
+	renderedHtml: string,
+	assignmentId?: number
 ): Promise<ReleaseResult> {
+	const body: Record<string, unknown> = {
+		version,
+		rendered_html: renderedHtml,
+	};
+	if (assignmentId !== undefined) {
+		body.assignment_id = assignmentId;
+	}
 	const resp = await request(
 		serverUrl,
 		token,
 		`/api/documents/${slug}/release/`,
 		{
 			method: "POST",
-			body: JSON.stringify({
-				version,
-				rendered_html: renderedHtml,
-			}),
+			body: JSON.stringify(body),
 		}
 	);
 	if (!resp.ok) throw new SyncError("Failed to release document", resp.status);
 	return resp.json();
+}
+
+export async function listAssignments(
+	serverUrl: string,
+	token: string
+): Promise<AssignmentSummary[]> {
+	const resp = await request(serverUrl, token, "/api/assignments/");
+	if (!resp.ok) throw new SyncError("Failed to list assignments", resp.status);
+	const data = await resp.json();
+	return data.assignments;
 }
 
 export async function listVersions(
