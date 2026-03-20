@@ -150,7 +150,7 @@ export class MdxPreviewView extends ItemView {
 
 		if (targetSourceLine != null && targetSourceLine > 0) {
 			this.iframe.addEventListener("load", () => {
-				this.scrollToSourceLine(targetSourceLine);
+				this.scrollToSourceLine(targetSourceLine, false);
 			}, { once: true });
 		} else if (scrollTop > 0) {
 			this.iframe.addEventListener("load", () => {
@@ -159,7 +159,7 @@ export class MdxPreviewView extends ItemView {
 		}
 	}
 
-	scrollToSourceLine(line: number): void {
+	scrollToSourceLine(line: number, smooth = true): void {
 		const doc = this.iframe?.contentDocument;
 		if (!doc) return;
 
@@ -177,7 +177,7 @@ export class MdxPreviewView extends ItemView {
 			best = elements[0];
 		}
 		if (best) {
-			best.scrollIntoView({ behavior: "smooth", block: "center" });
+			best.scrollIntoView({ behavior: smooth ? "smooth" : "instant", block: "center" });
 		}
 	}
 
