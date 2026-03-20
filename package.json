@@ -1,6 +1,6 @@
 {
 	"name": "cloud-assignment-obsidian-plugin",
-	"version": "2.0.6",
+	"version": "2.0.7",
 	"description": "Self-contained Obsidian plugin that renders cloud assignment MDX files",
 	"main": "dist/main.js",
 	"type": "module",
