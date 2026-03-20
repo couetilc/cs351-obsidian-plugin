@@ -139,7 +139,7 @@ export class MdxPreviewView extends ItemView {
 		this.statusEl = null;
 	}
 
-	setHtml(html: string): void {
+	setHtml(html: string, targetSourceLine?: number): void {
 		if (!this.iframe) return;
 		this.hideOverlay();
 		this.clearRenderError();
@@ -148,11 +148,44 @@ export class MdxPreviewView extends ItemView {
 
 		this.iframe.srcdoc = html;
 
-		if (scrollTop > 0) {
+		if (targetSourceLine != null && targetSourceLine > 0) {
+			this.iframe.addEventListener("load", () => {
+				this.scrollToSourceLine(targetSourceLine);
+			}, { once: true });
+		} else if (scrollTop > 0) {
 			this.iframe.addEventListener("load", () => {
 				this.iframe?.contentDocument?.documentElement?.scrollTo(0, scrollTop);
 			}, { once: true });
 		}
+	}
+
+	scrollToSourceLine(line: number): void {
+		const doc = this.iframe?.contentDocument;
+		if (!doc) return;
+
+		const elements = doc.querySelectorAll("[data-source-line]");
+		let best: Element | null = null;
+		let bestLine = -1;
+		for (const el of elements) {
+			const elLine = parseInt(el.getAttribute("data-source-line") || "0", 10);
+			if (elLine <= line && elLine > bestLine) {
+				best = el;
+				bestLine = elLine;
+			}
+		}
+		if (!best && elements.length > 0) {
+			best = elements[0];
+		}
+		if (best) {
+			best.scrollIntoView({ behavior: "smooth", block: "center" });
+		}
+	}
+
+	scrollToTop(): void {
+		this.iframe?.contentDocument?.documentElement?.scrollTo({
+			top: 0,
+			behavior: "smooth",
+		});
 	}
 
 	setExporting(active: boolean): void {

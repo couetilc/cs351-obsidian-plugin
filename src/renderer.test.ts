@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { stripFrontmatter, preprocessMdx, render, renderDocument, renderShikiCode, getHighlighter, resolveLang } from "./renderer";
+import { stripFrontmatter, preprocessMdx, render, renderDocument, renderShikiCode, getHighlighter, resolveLang, getFrontmatterLineCount } from "./renderer";
 
 describe("resolveLang", () => {
 	it("maps env to dotenv", () => {
@@ -34,6 +34,32 @@ describe("stripFrontmatter", () => {
 	it("handles Windows line endings", () => {
 		const input = '---\r\ntitle: "Test"\r\n---\r\n# Hello';
 		expect(stripFrontmatter(input)).toBe("# Hello");
+	});
+});
+
+describe("getFrontmatterLineCount", () => {
+	it("returns 0 when no frontmatter", () => {
+		expect(getFrontmatterLineCount("# Hello\nWorld")).toBe(0);
+	});
+
+	it("counts lines for simple frontmatter", () => {
+		const source = '---\ntitle: "Test"\n---\n# Hello';
+		expect(getFrontmatterLineCount(source)).toBe(3);
+	});
+
+	it("counts lines for multi-field frontmatter", () => {
+		const source = '---\ntitle: "Test"\ndate: 2026-01-01\nauthor: me\n---\n# Hello';
+		expect(getFrontmatterLineCount(source)).toBe(5);
+	});
+
+	it("handles Windows line endings", () => {
+		const source = '---\r\ntitle: "Test"\r\n---\r\n# Hello';
+		expect(getFrontmatterLineCount(source)).toBe(3);
+	});
+
+	it("handles frontmatter without trailing newline", () => {
+		const source = '---\ntitle: "Test"\n---';
+		expect(getFrontmatterLineCount(source)).toBe(3);
 	});
 });
 
@@ -76,6 +102,14 @@ describe("preprocessMdx", () => {
 		const result = preprocessMdx(input);
 		expect(result.cleanedSource).toBe(input);
 	});
+
+	it("preserves line count when stripping component imports", () => {
+		const input = "import Editor from '@components/Editor.astro'\nimport Terminal from '@components/Terminal.astro'\n# Hello\n\nParagraph";
+		const result = preprocessMdx(input);
+		const inputLineCount = input.split("\n").length;
+		const outputLineCount = result.cleanedSource.split("\n").length;
+		expect(outputLineCount).toBe(inputLineCount);
+	});
 });
 
 describe("renderShikiCode", () => {
@@ -102,14 +136,14 @@ describe("getHighlighter", () => {
 describe("render", () => {
 	it("renders simple MDX content", async () => {
 		const html = await render("# Hello World\n\nSome text here.");
-		expect(html).toContain("<h1>Hello World</h1>");
+		expect(html).toContain("Hello World</h1>");
 		expect(html).toContain("Some text here.");
 	}, 30_000);
 
 	it("renders MDX with frontmatter", async () => {
 		const source = '---\ntitle: "Test"\n---\n# Test Page\n\nContent';
 		const html = await render(source);
-		expect(html).toContain("<h1>Test Page</h1>");
+		expect(html).toContain("Test Page</h1>");
 		expect(html).not.toContain("---");
 	}, 30_000);
 
@@ -246,7 +280,7 @@ describe("renderDocument", () => {
 		expect(html).toContain("<html lang=\"en\">");
 		expect(html).toContain("<body>");
 		expect(html).toContain("</body>");
-		expect(html).toContain("<h1>Hello</h1>");
+		expect(html).toContain("Hello</h1>");
 	}, 30_000);
 
 	it("includes a style tag for CSS", async () => {

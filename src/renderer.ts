@@ -4,6 +4,7 @@ import { jsx, jsxs } from "preact/jsx-runtime";
 import { renderToString } from "preact-render-to-string";
 import remarkToc from "remark-toc";
 import rehypeTocTarget from "../rehype-toc-target.mjs";
+import rehypeSourceLine from "../rehype-source-line.mjs";
 import { components } from "./components/index";
 import { createHighlighter, type Highlighter } from "shiki";
 import globalCss from "./styles/global.css";
@@ -83,6 +84,14 @@ export function stripFrontmatter(source: string): string {
 	return source;
 }
 
+/** Count lines occupied by YAML frontmatter (including delimiters) */
+export function getFrontmatterLineCount(source: string): number {
+	const match = source.match(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/);
+	if (!match) return 0;
+	// Count newlines in the matched frontmatter block
+	return match[0].split("\n").length - (match[0].endsWith("\n") ? 1 : 0);
+}
+
 /** Replace import statements and resolve @images/ paths to vault-relative paths */
 export function preprocessMdx(source: string): {
 	cleanedSource: string;
@@ -112,7 +121,8 @@ export function preprocessMdx(source: string): {
 			/^import\s+\w+\s+from\s+['"](?:@components\/|\.\.\/\.\.\/components\/|\.\.\/components\/).*['"]\s*;?\s*$/
 		);
 		if (componentMatch) {
-			// Skip component imports - they're provided via the component map
+			// Emit empty line to preserve line numbering for source-line mapping
+			outputLines.push("");
 			continue;
 		}
 
@@ -154,7 +164,7 @@ export async function render(source: string): Promise<string> {
 		remarkPlugins: [
 			[remarkToc, { heading: "contents", maxDepth: 4, ordered: true }],
 		],
-		rehypePlugins: [rehypeTocTarget],
+		rehypePlugins: [rehypeTocTarget, rehypeSourceLine],
 		jsx: false,
 		jsxImportSource: "preact",
 	});

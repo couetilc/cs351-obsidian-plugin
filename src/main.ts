@@ -1,7 +1,8 @@
 import { MarkdownView, Notice, Plugin } from "obsidian";
+import { EditorView } from "@codemirror/view";
 import { MdxPreviewView, MDX_PREVIEW_VIEW_TYPE } from "./preview-view";
 import { getSourceModeState } from "./source-mode";
-import { renderDocument } from "./renderer";
+import { renderDocument, getFrontmatterLineCount } from "./renderer";
 import { embedFonts, inlineImages } from "./standalone";
 import { SyncSettingTab, DEFAULT_SETTINGS, type SyncSettings } from "./settings";
 import {
@@ -22,6 +23,9 @@ import { AssignmentPickerModal } from "./assignment-picker-modal";
 
 export default class MdxPlugin extends Plugin {
 	private renderTimer: ReturnType<typeof setTimeout> | null = null;
+	private cursorTimer: ReturnType<typeof setTimeout> | null = null;
+	private renderPending = false;
+	private lastCursorLine = 1;
 	private settingTab: SyncSettingTab | null = null;
 	settings: SyncSettings = { ...DEFAULT_SETTINGS };
 
@@ -73,6 +77,18 @@ export default class MdxPlugin extends Plugin {
 			})
 		);
 
+		this.registerEditorExtension(
+			EditorView.updateListener.of((update) => {
+				if (update.selectionSet) {
+					const line = update.state.doc.lineAt(
+						update.state.selection.main.head
+					).number;
+					this.lastCursorLine = line;
+					this.handleCursorMove(line);
+				}
+			})
+		);
+
 		this.registerEvent(
 			this.app.workspace.on("editor-change", () => {
 				this.debouncedRender();
@@ -82,6 +98,7 @@ export default class MdxPlugin extends Plugin {
 
 	onunload(): void {
 		if (this.renderTimer) clearTimeout(this.renderTimer);
+		if (this.cursorTimer) clearTimeout(this.cursorTimer);
 		this.app.workspace.detachLeavesOfType(MDX_PREVIEW_VIEW_TYPE);
 	}
 
@@ -158,6 +175,29 @@ export default class MdxPlugin extends Plugin {
 		return { source, slug: editor.file.basename };
 	}
 
+	private findPreviewView(): MdxPreviewView | null {
+		const leaves = this.app.workspace.getLeavesOfType(MDX_PREVIEW_VIEW_TYPE);
+		if (leaves.length === 0) return null;
+		return leaves[0].view as MdxPreviewView;
+	}
+
+	private handleCursorMove(editorLine: number): void {
+		if (this.renderPending) return;
+		if (this.cursorTimer) clearTimeout(this.cursorTimer);
+		this.cursorTimer = setTimeout(() => {
+			const view = this.findPreviewView();
+			if (!view) return;
+			const active = this.getActiveMdxSource();
+			if (!active) return;
+			const fmOffset = getFrontmatterLineCount(active.source);
+			if (editorLine <= fmOffset) {
+				view.scrollToTop();
+			} else {
+				view.scrollToSourceLine(editorLine - fmOffset);
+			}
+		}, 50);
+	}
+
 	private async renderActiveFile(): Promise<void> {
 		const view = this.getPreviewView();
 		if (!view) return;
@@ -170,6 +210,7 @@ export default class MdxPlugin extends Plugin {
 			return;
 		}
 
+		this.renderPending = true;
 		try {
 			let html = await renderDocument(active.source);
 			html = html.replace(
@@ -179,11 +220,17 @@ export default class MdxPlugin extends Plugin {
 					return `${pre}${resourceUrl}${post}`;
 				}
 			);
-			view.setHtml(html);
+			const fmOffset = getFrontmatterLineCount(active.source);
+			const targetLine = this.lastCursorLine > fmOffset
+				? this.lastCursorLine - fmOffset
+				: undefined;
+			view.setHtml(html, targetLine);
 		} catch (err) {
 			const message =
 				err instanceof Error ? err.message : String(err);
 			view.showRenderError(`Render error: ${message}`);
+		} finally {
+			this.renderPending = false;
 		}
 	}
 
