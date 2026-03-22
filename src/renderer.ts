@@ -305,7 +305,7 @@ export async function render(source: string): Promise<string> {
 /** Render MDX source to a complete HTML document */
 export async function renderDocument(source: string, title?: string): Promise<string> {
 	const contentHtml = await render(source);
-	const mermaidScript = contentHtml.includes("ca-mermaid")
+	const mermaidScript = contentHtml.includes('<pre class="mermaid">')
 		? `<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>\n<script>mermaid.initialize({ startOnLoad: true });</script>\n`
 		: "";
 	return `<!DOCTYPE html>
