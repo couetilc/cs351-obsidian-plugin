@@ -96,7 +96,7 @@ export class MdxPreviewView extends ItemView {
 
 		this.iframe = document.createElement("iframe");
 		this.iframe.addClass("mdx-preview-iframe");
-		this.iframe.setAttribute("sandbox", "allow-same-origin allow-popups");
+		this.iframe.setAttribute("sandbox", "allow-same-origin allow-popups allow-scripts");
 		this.iframe.style.width = "100%";
 		this.iframe.style.flex = "1";
 		this.iframe.style.border = "none";
