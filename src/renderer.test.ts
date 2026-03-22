@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { stripFrontmatter, preprocessMdx, render, renderDocument, renderShikiCode, getHighlighter, resolveLang, getFrontmatterLineCount } from "./renderer";
+import { describe, it, expect, vi, afterEach } from "vitest";
+import { stripFrontmatter, preprocessMdx, render, renderDocument, renderShikiCode, getHighlighter, resolveLang, getFrontmatterLineCount, decodeHtmlEntities, _resetMermaidLoader } from "./renderer";
 
 describe("resolveLang", () => {
 	it("maps env to dotenv", () => {
@@ -304,5 +304,104 @@ describe("renderDocument", () => {
 		const html = await renderDocument("# Hello");
 		expect(html).toContain('charset="UTF-8"');
 		expect(html).toContain('name="viewport"');
+	}, 30_000);
+
+	it("includes mermaid CDN scripts when content has mermaid", async () => {
+		const html = await renderDocument('<Mermaid chart="graph TD; A-->B;" />');
+		expect(html).toContain("cdn.jsdelivr.net/npm/mermaid");
+		expect(html).toContain("mermaid.initialize");
+	}, 30_000);
+});
+
+describe("decodeHtmlEntities", () => {
+	it("decodes all common HTML entities", () => {
+		expect(decodeHtmlEntities("A --&gt; B")).toBe("A --> B");
+		expect(decodeHtmlEntities("&lt;div&gt;")).toBe("<div>");
+		expect(decodeHtmlEntities("&amp;")).toBe("&");
+		expect(decodeHtmlEntities("&quot;hi&quot;")).toBe('"hi"');
+		expect(decodeHtmlEntities("&#x27;")).toBe("'");
+	});
+
+	it("passes through text without entities", () => {
+		expect(decodeHtmlEntities("hello world")).toBe("hello world");
+	});
+});
+
+describe("mermaid pre-rendering", () => {
+	afterEach(() => {
+		_resetMermaidLoader();
+		vi.unstubAllGlobals();
+	});
+
+	it("renders mermaid charts to SVG when window.mermaid is available", async () => {
+		_resetMermaidLoader();
+		const mockMermaid = {
+			initialize: vi.fn(),
+			render: vi.fn().mockResolvedValue({ svg: "<svg>rendered-chart</svg>" }),
+		};
+		vi.stubGlobal("document", {});
+		vi.stubGlobal("window", { mermaid: mockMermaid });
+
+		const source = '<Mermaid chart="graph TD; A-->B;" />';
+		const html = await render(source);
+		expect(html).toContain("<svg>rendered-chart</svg>");
+		expect(html).not.toContain('<pre class="mermaid">');
+	}, 30_000);
+
+	it("loads mermaid from CDN when window.mermaid is not available", async () => {
+		_resetMermaidLoader();
+		const mockScript: Record<string, unknown> = {};
+		const mockMermaid = {
+			initialize: vi.fn(),
+			render: vi.fn().mockResolvedValue({ svg: "<svg>cdn-chart</svg>" }),
+		};
+		vi.stubGlobal("document", {
+			createElement: vi.fn().mockReturnValue(mockScript),
+			head: {
+				appendChild: vi.fn().mockImplementation(() => {
+					(globalThis as Record<string, unknown>).window = { mermaid: mockMermaid };
+					(mockScript.onload as () => void)();
+				}),
+			},
+		});
+		vi.stubGlobal("window", {});
+
+		const source = '<Mermaid chart="graph TD; A-->B;" />';
+		const html = await render(source);
+		expect(html).toContain("<svg>cdn-chart</svg>");
+		expect(mockScript.src).toBe("https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js");
+	}, 30_000);
+
+	it("falls back to pre when CDN script fails to load", async () => {
+		_resetMermaidLoader();
+		const mockScript: Record<string, unknown> = {};
+		vi.stubGlobal("document", {
+			createElement: vi.fn().mockReturnValue(mockScript),
+			head: {
+				appendChild: vi.fn().mockImplementation(() => {
+					(mockScript.onerror as () => void)();
+				}),
+			},
+		});
+		vi.stubGlobal("window", {});
+
+		const source = '<Mermaid chart="graph TD; A-->B;" />';
+		const html = await render(source);
+		expect(html).toContain('<pre class="mermaid">');
+	}, 30_000);
+
+	it("falls back to pre when mermaid.render throws", async () => {
+		_resetMermaidLoader();
+		const mockMermaid = {
+			initialize: vi.fn(),
+			render: vi.fn().mockRejectedValue(new Error("parse error")),
+		};
+		vi.stubGlobal("document", {});
+		vi.stubGlobal("window", { mermaid: mockMermaid });
+
+		const source = '<Mermaid chart="invalid chart syntax" />';
+		const html = await render(source);
+		expect(html).toContain('<pre class="mermaid">');
+		expect(html).toContain("ca-mermaid");
 	}, 30_000);
 });

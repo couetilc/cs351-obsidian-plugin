@@ -322,4 +322,9 @@ ${mermaidScript}</body>
 </html>`;
 }
 
-export { renderShikiCode, getHighlighter };
+export { renderShikiCode, getHighlighter, decodeHtmlEntities };
+
+/** @internal Reset mermaid loader state for testing */
+export function _resetMermaidLoader(): void {
+	mermaidLoadPromise = null;
+}
