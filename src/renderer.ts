@@ -12,6 +12,77 @@ import componentsCss from "./styles/components.css";
 
 let highlighterPromise: Promise<Highlighter> | null = null;
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let mermaidLoadPromise: Promise<any> | null = null;
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function loadMermaid(): Promise<any> {
+	if (mermaidLoadPromise) return mermaidLoadPromise;
+	mermaidLoadPromise = new Promise((resolve, reject) => {
+		if (typeof document === "undefined" || typeof window === "undefined") {
+			reject(new Error("No DOM available"));
+			return;
+		}
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		if ((window as any).mermaid) {
+			const m = (window as any).mermaid;
+			m.initialize({ startOnLoad: false });
+			resolve(m);
+			return;
+		}
+		const script = document.createElement("script");
+		script.src = "https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js";
+		script.onload = () => {
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const m = (window as any).mermaid;
+			m.initialize({ startOnLoad: false });
+			resolve(m);
+		};
+		script.onerror = () => {
+			mermaidLoadPromise = null;
+			reject(new Error("Failed to load mermaid"));
+		};
+		document.head.appendChild(script);
+	});
+	return mermaidLoadPromise;
+}
+
+function decodeHtmlEntities(text: string): string {
+	return text
+		.replace(/&amp;/g, "&")
+		.replace(/&lt;/g, "<")
+		.replace(/&gt;/g, ">")
+		.replace(/&quot;/g, '"')
+		.replace(/&#x27;/g, "'");
+}
+
+async function renderMermaidCharts(html: string): Promise<string> {
+	const regex = /<pre class="mermaid">([\s\S]*?)<\/pre>/g;
+	const matches = [...html.matchAll(regex)];
+	if (matches.length === 0) return html;
+
+	try {
+		const mermaid = await loadMermaid();
+		let result = html;
+		for (let i = 0; i < matches.length; i++) {
+			const chart = decodeHtmlEntities(matches[i][1]);
+			try {
+				const { svg } = await mermaid.render(
+					`mermaid-${Date.now()}-${i}`,
+					chart,
+				);
+				result = result.replace(matches[i][0], svg);
+			} catch {
+				// Leave as <pre> if individual chart fails to render
+			}
+		}
+		return result;
+	} catch {
+		// If mermaid can't be loaded, return HTML unchanged
+		return html;
+	}
+}
+
 const LANG_ALIASES: Record<string, string> = {
 	env: "dotenv",
 	py: "python",
@@ -225,12 +296,18 @@ export async function render(source: string): Promise<string> {
 
 	// Step 6: Render to HTML string
 	const vnode = Content({ components: wrappedComponents });
-	return renderToString(vnode);
+	const html = renderToString(vnode);
+
+	// Step 7: Pre-render Mermaid charts to SVG (requires DOM, graceful fallback)
+	return renderMermaidCharts(html);
 }
 
 /** Render MDX source to a complete HTML document */
 export async function renderDocument(source: string, title?: string): Promise<string> {
 	const contentHtml = await render(source);
+	const mermaidScript = contentHtml.includes("ca-mermaid")
+		? `<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>\n<script>mermaid.initialize({ startOnLoad: true });</script>\n`
+		: "";
 	return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -241,7 +318,7 @@ ${componentsCss}</style>
 </head>
 <body>
 ${contentHtml}
-</body>
+${mermaidScript}</body>
 </html>`;
 }
 

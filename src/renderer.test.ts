@@ -244,7 +244,8 @@ export const testImg = "images/ca1/test.png";
 		const source = '<Mermaid chart="graph TD; A-->B;" />';
 		const html = await render(source);
 		expect(html).toContain("ca-mermaid");
-		expect(html).toContain("mermaid");
+		// In test env (no DOM), mermaid pre-rendering is skipped; chart stays in <pre>
+		expect(html).toContain('<pre class="mermaid">');
 	}, 30_000);
 
 	it("renders markdown links as ExternalLink via component map", async () => {

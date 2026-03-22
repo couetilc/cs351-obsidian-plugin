@@ -224,14 +224,4 @@ describe("Mermaid", () => {
 		expect(html).toContain('<pre class="mermaid">');
 		expect(html).toContain("graph TD; A-->B;");
 	});
-
-	it("includes mermaid CDN script", () => {
-		const html = renderToString(h(Mermaid, { chart: "graph LR; A-->B;" }));
-		expect(html).toContain("cdn.jsdelivr.net/npm/mermaid");
-	});
-
-	it("includes mermaid.initialize call", () => {
-		const html = renderToString(h(Mermaid, { chart: "graph LR; A-->B;" }));
-		expect(html).toContain("mermaid.initialize");
-	});
 });
