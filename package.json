@@ -16,6 +16,7 @@
 		"hast-util-to-string": "^3",
 		"preact": "^10",
 		"preact-render-to-string": "^6",
+		"remark-gfm": "^4.0.1",
 		"remark-toc": "^9",
 		"shiki": "^3",
 		"unist-util-visit": "^5"

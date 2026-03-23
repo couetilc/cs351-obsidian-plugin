@@ -2,6 +2,7 @@ import { compile, run } from "@mdx-js/mdx";
 import { Fragment } from "preact";
 import { jsx, jsxs } from "preact/jsx-runtime";
 import { renderToString } from "preact-render-to-string";
+import remarkGfm from "remark-gfm";
 import remarkToc from "remark-toc";
 import rehypeTocTarget from "../rehype-toc-target.mjs";
 import rehypeSourceLine from "../rehype-source-line.mjs";
@@ -233,6 +234,7 @@ export async function render(source: string): Promise<string> {
 	const compiled = await compile(cleanedSource, {
 		outputFormat: "function-body",
 		remarkPlugins: [
+			remarkGfm,
 			[remarkToc, { heading: "contents", maxDepth: 4, ordered: true }],
 		],
 		rehypePlugins: [rehypeTocTarget, rehypeSourceLine],
