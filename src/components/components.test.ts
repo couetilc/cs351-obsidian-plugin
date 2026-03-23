@@ -8,6 +8,7 @@ import { Detail } from "./detail";
 import { ExternalLink } from "./external-link";
 import { Hide } from "./hide";
 import { Mermaid } from "./mermaid";
+import { Endpoint } from "./endpoint";
 
 describe("Editor", () => {
 	it("renders with filename", () => {
@@ -214,6 +215,32 @@ describe("Hide", () => {
 	it("renders an empty span", () => {
 		const html = renderToString(h(Hide, null));
 		expect(html).toBe("<span></span>");
+	});
+});
+
+describe("Endpoint", () => {
+	it("renders with method, path, and children", () => {
+		const html = renderToString(h(Endpoint, { method: "GET", path: "/api/users" },
+			h("p", null, "Returns a list of users"),
+		));
+		expect(html).toContain("ca-endpoint");
+		expect(html).toContain("🔌");
+		expect(html).toContain("GET");
+		expect(html).toContain("/api/users");
+		expect(html).toContain("Returns a list of users");
+	});
+
+	it("renders path with normal font weight", () => {
+		const html = renderToString(h(Endpoint, { method: "PUT", path: "/dns" }));
+		expect(html).toContain("font-weight:normal");
+		expect(html).toContain("/dns");
+	});
+
+	it("renders without children", () => {
+		const html = renderToString(h(Endpoint, { method: "DELETE", path: "/api/items/1" }));
+		expect(html).toContain("ca-endpoint");
+		expect(html).toContain("DELETE");
+		expect(html).toContain("/api/items/1");
 	});
 });
 

@@ -7,6 +7,7 @@ import { Mermaid } from "./mermaid";
 import { Detail } from "./detail";
 import { ExternalLink } from "./external-link";
 import { Hide } from "./hide";
+import { Endpoint } from "./endpoint";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ComponentFn = (props: any) => VNode;
@@ -20,6 +21,7 @@ export const components: Record<string, ComponentFn> = {
 	Detail,
 	ExternalLink,
 	Hide,
+	Endpoint,
 	// Map <a> to ExternalLink so MDX auto-links get target="_blank"
 	a: ExternalLink,
 };

@@ -248,6 +248,16 @@ export const testImg = "images/ca1/test.png";
 		expect(html).toContain('<pre class="mermaid">');
 	}, 30_000);
 
+	it("renders Endpoint component", async () => {
+		const source = '<Endpoint method="GET" path="/api/users">\nReturns a list of users.\n</Endpoint>';
+		const html = await render(source);
+		expect(html).toContain("ca-endpoint");
+		expect(html).toContain("🔌");
+		expect(html).toContain("GET");
+		expect(html).toContain("/api/users");
+		expect(html).toContain("Returns a list of users.");
+	}, 30_000);
+
 	it("renders markdown links as ExternalLink via component map", async () => {
 		const source = "[Google](https://google.com)";
 		const html = await render(source);

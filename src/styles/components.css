@@ -7,7 +7,8 @@
 .ca-notice,
 .ca-reflect,
 .ca-celebrate,
-.ca-points {
+.ca-points,
+.ca-endpoint {
 	margin-top: 1em;
 	position: relative;
 	padding: .25em 1em;
@@ -21,7 +22,8 @@
 .ca-vibecheck > strong,
 .ca-notice > strong,
 .ca-reflect > strong,
-.ca-celebrate > strong {
+.ca-celebrate > strong,
+.ca-endpoint > strong {
 	position: absolute;
 	top: -1em;
 	padding: 0em .5em;
@@ -59,6 +61,10 @@
 /* Celebrate */
 .ca-celebrate { border: 5px solid #c4a8e0; background: linear-gradient(135deg, #fdf2f2, #fdf0fa, #f0f0fd, #edf8fd, #f0fdf4, #fefdf2); }
 .ca-celebrate > strong { color: #9b6fbf; background: #fdf2f2; }
+
+/* Endpoint */
+.ca-endpoint { border: 5px solid #4682B4; background: #f5f8fb; }
+.ca-endpoint > strong { color: #2C5F8A; background: #f5f8fb; }
 
 /* Points */
 .ca-points {
