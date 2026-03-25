@@ -21,10 +21,12 @@ export class MdxPreviewView extends ItemView {
 	private helpEl: HTMLDivElement | null = null;
 	private statusEl: HTMLSpanElement | null = null;
 	private lastScrollTop = 0;
-	private scrollHandler = (): void => {
-		const scrollTop = this.iframe?.contentDocument?.documentElement?.scrollTop;
-		if (scrollTop !== undefined && scrollTop > 0) {
-			this.lastScrollTop = scrollTop;
+	private messageHandler = (event: MessageEvent): void => {
+		if (event.data?.type === "ca-scroll") {
+			const scrollTop = event.data.scrollTop;
+			if (typeof scrollTop === "number" && scrollTop > 0) {
+				this.lastScrollTop = scrollTop;
+			}
 		}
 	};
 	onExport: (() => void) | null = null;
@@ -96,7 +98,7 @@ export class MdxPreviewView extends ItemView {
 
 		this.iframe = document.createElement("iframe");
 		this.iframe.addClass("mdx-preview-iframe");
-		this.iframe.setAttribute("sandbox", "allow-same-origin allow-popups");
+		this.iframe.setAttribute("sandbox", "allow-scripts allow-popups");
 		this.iframe.style.width = "100%";
 		this.iframe.style.flex = "1";
 		this.iframe.style.border = "none";
@@ -105,9 +107,7 @@ export class MdxPreviewView extends ItemView {
 		container.style.height = "100%";
 		container.appendChild(this.iframe);
 
-		this.iframe.addEventListener("load", () => {
-			this.iframe?.contentDocument?.addEventListener("scroll", this.scrollHandler);
-		});
+		window.addEventListener("message", this.messageHandler);
 
 		this.registerEvent(
 			this.app.workspace.on("active-leaf-change", (leaf) => {
@@ -122,7 +122,7 @@ export class MdxPreviewView extends ItemView {
 	}
 
 	async onClose(): Promise<void> {
-		this.iframe?.contentDocument?.removeEventListener("scroll", this.scrollHandler);
+		window.removeEventListener("message", this.messageHandler);
 		this.lastScrollTop = 0;
 		this.iframe = null;
 		this.messageEl = null;
@@ -150,42 +150,33 @@ export class MdxPreviewView extends ItemView {
 
 		if (targetSourceLine != null && targetSourceLine > 0) {
 			this.iframe.addEventListener("load", () => {
-				this.scrollToSourceLine(targetSourceLine, false);
+				this.iframe?.contentWindow?.postMessage(
+					{ type: "ca-scroll-to-line", line: targetSourceLine, smooth: false },
+					"*",
+				);
 			}, { once: true });
 		} else if (scrollTop > 0) {
 			this.iframe.addEventListener("load", () => {
-				this.iframe?.contentDocument?.documentElement?.scrollTo(0, scrollTop);
+				this.iframe?.contentWindow?.postMessage(
+					{ type: "ca-scroll-to", scrollTop },
+					"*",
+				);
 			}, { once: true });
 		}
 	}
 
 	scrollToSourceLine(line: number, smooth = true): void {
-		const doc = this.iframe?.contentDocument;
-		if (!doc) return;
-
-		const elements = doc.querySelectorAll("[data-source-line]");
-		let best: Element | null = null;
-		let bestLine = -1;
-		for (const el of elements) {
-			const elLine = parseInt(el.getAttribute("data-source-line") || "0", 10);
-			if (elLine <= line && elLine > bestLine) {
-				best = el;
-				bestLine = elLine;
-			}
-		}
-		if (!best && elements.length > 0) {
-			best = elements[0];
-		}
-		if (best) {
-			best.scrollIntoView({ behavior: smooth ? "smooth" : "instant", block: "center" });
-		}
+		this.iframe?.contentWindow?.postMessage(
+			{ type: "ca-scroll-to-line", line, smooth },
+			"*",
+		);
 	}
 
 	scrollToTop(): void {
-		this.iframe?.contentDocument?.documentElement?.scrollTo({
-			top: 0,
-			behavior: "smooth",
-		});
+		this.iframe?.contentWindow?.postMessage(
+			{ type: "ca-scroll-to-top" },
+			"*",
+		);
 	}
 
 	setExporting(active: boolean): void {

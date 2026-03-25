@@ -324,16 +324,9 @@
 	text-align: center;
 }
 
-/* Isolate SVG from parent document CSS (fixes Firefox inheritance of
-   font-family, line-height, color etc. into mermaid diagrams). Mermaid's
-   own theme CSS inside the SVG handles all element-specific styling. */
 .ca-mermaid svg {
-	all: initial;
-	display: block;
 	max-width: 100%;
 	height: auto;
-	overflow: visible;
-	font-family: "trebuchet ms", verdana, arial, sans-serif;
 }
 
 /* ── Shiki code blocks ── */

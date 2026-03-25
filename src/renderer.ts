@@ -349,7 +349,31 @@ ${componentsCss}</style>
 </head>
 <body>
 ${contentHtml}
-${mermaidScript}</body>
+${mermaidScript}<script>
+(function(){
+  document.addEventListener('scroll',function(){
+    parent.postMessage({type:'ca-scroll',scrollTop:document.documentElement.scrollTop},'*');
+  });
+  window.addEventListener('message',function(e){
+    if(!e.data||!e.data.type)return;
+    if(e.data.type==='ca-scroll-to'){
+      document.documentElement.scrollTo(0,e.data.scrollTop);
+    }else if(e.data.type==='ca-scroll-to-line'){
+      var els=document.querySelectorAll('[data-source-line]');
+      var best=null,bestLine=-1;
+      for(var i=0;i<els.length;i++){
+        var l=parseInt(els[i].getAttribute('data-source-line')||'0',10);
+        if(l<=e.data.line&&l>bestLine){best=els[i];bestLine=l;}
+      }
+      if(!best&&els.length>0)best=els[0];
+      if(best)best.scrollIntoView({behavior:e.data.smooth?'smooth':'instant',block:'center'});
+    }else if(e.data.type==='ca-scroll-to-top'){
+      document.documentElement.scrollTo({top:0,behavior:'smooth'});
+    }
+  });
+})();
+</script>
+</body>
 </html>`;
 }
 
