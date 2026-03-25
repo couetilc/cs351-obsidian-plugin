@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { stripFrontmatter, preprocessMdx, render, renderDocument, renderShikiCode, getHighlighter, resolveLang, getFrontmatterLineCount, decodeHtmlEntities, _resetMermaidLoader } from "./renderer";
+import { stripFrontmatter, preprocessMdx, render, renderDocument, renderShikiCode, getHighlighter, resolveLang, getFrontmatterLineCount, decodeHtmlEntities, ensureSvgSelfContained, MERMAID_CDN_URL, _resetMermaidLoader } from "./renderer";
 
 describe("resolveLang", () => {
 	it("maps env to dotenv", () => {
@@ -347,14 +347,14 @@ describe("mermaid pre-rendering", () => {
 		_resetMermaidLoader();
 		const mockMermaid = {
 			initialize: vi.fn(),
-			render: vi.fn().mockResolvedValue({ svg: "<svg>rendered-chart</svg>" }),
+			render: vi.fn().mockResolvedValue({ svg: '<svg id="test"><style>.node{}</style>rendered-chart</svg>' }),
 		};
 		vi.stubGlobal("document", {});
 		vi.stubGlobal("window", { mermaid: mockMermaid });
 
 		const source = '<Mermaid chart="graph TD; A-->B;" />';
 		const html = await render(source);
-		expect(html).toContain("<svg>rendered-chart</svg>");
+		expect(html).toContain("rendered-chart");
 		expect(html).not.toContain('<pre class="mermaid">');
 	}, 30_000);
 
@@ -363,7 +363,7 @@ describe("mermaid pre-rendering", () => {
 		const mockScript: Record<string, unknown> = {};
 		const mockMermaid = {
 			initialize: vi.fn(),
-			render: vi.fn().mockResolvedValue({ svg: "<svg>cdn-chart</svg>" }),
+			render: vi.fn().mockResolvedValue({ svg: '<svg id="test"><style>.node{}</style>cdn-chart</svg>' }),
 		};
 		vi.stubGlobal("document", {
 			createElement: vi.fn().mockReturnValue(mockScript),
@@ -378,8 +378,9 @@ describe("mermaid pre-rendering", () => {
 
 		const source = '<Mermaid chart="graph TD; A-->B;" />';
 		const html = await render(source);
-		expect(html).toContain("<svg>cdn-chart</svg>");
-		expect(mockScript.src).toBe("https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js");
+		expect(html).toContain("cdn-chart");
+		expect(html).not.toContain('<pre class="mermaid">');
+		expect(mockScript.src).toBe(MERMAID_CDN_URL);
 	}, 30_000);
 
 	it("falls back to pre when CDN script fails to load", async () => {
@@ -414,4 +415,37 @@ describe("mermaid pre-rendering", () => {
 		expect(html).toContain('<pre class="mermaid">');
 		expect(html).toContain("ca-mermaid");
 	}, 30_000);
+
+	it("injects fallback styles when SVG has no embedded styles", async () => {
+		_resetMermaidLoader();
+		const mockMermaid = {
+			initialize: vi.fn(),
+			render: vi.fn().mockResolvedValue({ svg: '<svg id="test">bare-chart</svg>' }),
+		};
+		vi.stubGlobal("document", {});
+		vi.stubGlobal("window", { mermaid: mockMermaid });
+
+		const source = '<Mermaid chart="graph TD; A-->B;" />';
+		const html = await render(source);
+		expect(html).toContain("bare-chart");
+		expect(html).toContain("<style>");
+		expect(html).toContain("fill: #ECECFF");
+		expect(html).not.toContain('<pre class="mermaid">');
+	}, 30_000);
+});
+
+describe("ensureSvgSelfContained", () => {
+	it("injects fallback styles when SVG has no style element", () => {
+		const svg = '<svg id="test"><rect/></svg>';
+		const result = ensureSvgSelfContained(svg);
+		expect(result).toContain("<style>");
+		expect(result).toContain("fill: #ECECFF");
+		expect(result).toContain("stroke: #333");
+	});
+
+	it("leaves SVG unchanged when it already has embedded styles", () => {
+		const svg = '<svg id="test"><style>.node { fill: red; }</style><rect/></svg>';
+		const result = ensureSvgSelfContained(svg);
+		expect(result).toBe(svg);
+	});
 });

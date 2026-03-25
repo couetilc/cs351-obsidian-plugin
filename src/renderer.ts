@@ -16,6 +16,21 @@ let highlighterPromise: Promise<Highlighter> | null = null;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let mermaidLoadPromise: Promise<any> | null = null;
 
+const MERMAID_CDN_URL = "https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js";
+
+const MERMAID_CONFIG = {
+	startOnLoad: false,
+	theme: "default" as const,
+	themeVariables: {
+		primaryColor: "#ECECFF",
+		primaryBorderColor: "#9370DB",
+		primaryTextColor: "#333",
+		lineColor: "#333",
+		secondaryColor: "#ffffde",
+		tertiaryColor: "#fff",
+	},
+};
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function loadMermaid(): Promise<any> {
 	if (mermaidLoadPromise) return mermaidLoadPromise;
@@ -27,16 +42,16 @@ function loadMermaid(): Promise<any> {
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		if ((window as any).mermaid) {
 			const m = (window as any).mermaid;
-			m.initialize({ startOnLoad: false });
+			m.initialize(MERMAID_CONFIG);
 			resolve(m);
 			return;
 		}
 		const script = document.createElement("script");
-		script.src = "https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js";
+		script.src = MERMAID_CDN_URL;
 		script.onload = () => {
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			const m = (window as any).mermaid;
-			m.initialize({ startOnLoad: false });
+			m.initialize(MERMAID_CONFIG);
 			resolve(m);
 		};
 		script.onerror = () => {
@@ -57,6 +72,20 @@ function decodeHtmlEntities(text: string): string {
 		.replace(/&#x27;/g, "'");
 }
 
+const MERMAID_SVG_FALLBACK_STYLES = `<style>
+.node rect, .node circle, .node ellipse, .node polygon, .node path { fill: #ECECFF; stroke: #9370DB; stroke-width: 1px; }
+.node .label, .node text, text { fill: #333; }
+.edgePath .path { stroke: #333; fill: none; stroke-width: 1.5px; }
+.edgeLabel { background-color: #fff; color: #333; }
+.cluster rect { fill: #ffffde; stroke: #aaaa33; stroke-width: 1px; }
+marker path { fill: #333; }
+</style>`;
+
+function ensureSvgSelfContained(svg: string): string {
+	if (svg.includes("<style")) return svg;
+	return svg.replace(/(<svg[^>]*>)/, `$1${MERMAID_SVG_FALLBACK_STYLES}`);
+}
+
 async function renderMermaidCharts(html: string): Promise<string> {
 	const regex = /<pre class="mermaid">([\s\S]*?)<\/pre>/g;
 	const matches = [...html.matchAll(regex)];
@@ -72,7 +101,7 @@ async function renderMermaidCharts(html: string): Promise<string> {
 					`mermaid-${Date.now()}-${i}`,
 					chart,
 				);
-				result = result.replace(matches[i][0], svg);
+				result = result.replace(matches[i][0], ensureSvgSelfContained(svg));
 			} catch {
 				// Leave as <pre> if individual chart fails to render
 			}
@@ -308,7 +337,7 @@ export async function render(source: string): Promise<string> {
 export async function renderDocument(source: string, title?: string): Promise<string> {
 	const contentHtml = await render(source);
 	const mermaidScript = contentHtml.includes('<pre class="mermaid">')
-		? `<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>\n<script>mermaid.initialize({ startOnLoad: true });</script>\n`
+		? `<script src="${MERMAID_CDN_URL}"></script>\n<script>mermaid.initialize(${JSON.stringify({ ...MERMAID_CONFIG, startOnLoad: true })});</script>\n`
 		: "";
 	return `<!DOCTYPE html>
 <html lang="en">
@@ -324,7 +353,7 @@ ${mermaidScript}</body>
 </html>`;
 }
 
-export { renderShikiCode, getHighlighter, decodeHtmlEntities };
+export { renderShikiCode, getHighlighter, decodeHtmlEntities, ensureSvgSelfContained, MERMAID_CDN_URL };
 
 /** @internal Reset mermaid loader state for testing */
 export function _resetMermaidLoader(): void {

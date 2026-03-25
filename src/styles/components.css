@@ -324,6 +324,30 @@
 	text-align: center;
 }
 
+.ca-mermaid svg {
+	max-width: 100%;
+	height: auto;
+}
+
+/* Safety net: prevent black-filled SVG elements if mermaid styles are missing */
+.ca-mermaid .node rect,
+.ca-mermaid .node circle,
+.ca-mermaid .node ellipse,
+.ca-mermaid .node polygon {
+	fill: #ECECFF;
+	stroke: #9370DB;
+}
+
+.ca-mermaid .edgePath .path {
+	stroke: #333;
+	fill: none;
+}
+
+.ca-mermaid .cluster rect {
+	fill: #ffffde;
+	stroke: #aaaa33;
+}
+
 /* ── Shiki code blocks ── */
 .shiki {
 	padding: 1em;
