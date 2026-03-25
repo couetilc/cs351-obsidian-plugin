@@ -324,28 +324,16 @@
 	text-align: center;
 }
 
+/* Isolate SVG from parent document CSS (fixes Firefox inheritance of
+   font-family, line-height, color etc. into mermaid diagrams). Mermaid's
+   own theme CSS inside the SVG handles all element-specific styling. */
 .ca-mermaid svg {
+	all: initial;
+	display: block;
 	max-width: 100%;
 	height: auto;
-}
-
-/* Safety net: prevent black-filled SVG elements if mermaid styles are missing */
-.ca-mermaid .node rect,
-.ca-mermaid .node circle,
-.ca-mermaid .node ellipse,
-.ca-mermaid .node polygon {
-	fill: #ECECFF;
-	stroke: #9370DB;
-}
-
-.ca-mermaid .edgePath .path {
-	stroke: #333;
-	fill: none;
-}
-
-.ca-mermaid .cluster rect {
-	fill: #ffffde;
-	stroke: #aaaa33;
+	overflow: visible;
+	font-family: "trebuchet ms", verdana, arial, sans-serif;
 }
 
 /* ── Shiki code blocks ── */
