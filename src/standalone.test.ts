@@ -217,4 +217,34 @@ describe("inlineImages", () => {
 
 		expect(result).toContain("data:image/jpeg;base64,");
 	});
+
+	it("inlines vault-relative image paths for preview use (empty baseDir)", async () => {
+		// This exercises the preview rendering path: renderer produces src="images/..."
+		// and inlineImages with baseDir="" resolves them as vault-relative paths.
+		// Previously, the preview used app:// URLs which are blocked in sandboxed iframes.
+		const html =
+			'<img src="images/shared/aws-console-regions.png" alt="AWS" width="600">' +
+			'<img src="images/assignment-3/ecr-public-repo-proxy.png" alt="ECR" width="600">';
+		const mockRead = vi.fn().mockResolvedValue(TINY_PNG);
+
+		const result = await inlineImages(html, "", mockRead);
+
+		expect(mockRead).toHaveBeenCalledWith("/images/shared/aws-console-regions.png");
+		expect(mockRead).toHaveBeenCalledWith("/images/assignment-3/ecr-public-repo-proxy.png");
+		expect(result).not.toContain('src="images/');
+		const dataUriCount = (result.match(/data:image\/png;base64,/g) || []).length;
+		expect(dataUriCount).toBe(2);
+	});
+
+	it("keeps app:// URLs unchanged when read fails (sandbox fallback)", async () => {
+		// app:// protocol URLs can't be read as filesystem paths — inlineImages
+		// should gracefully fall back and keep them. This demonstrates why the old
+		// approach (converting to app:// URLs) doesn't work with inlineImages.
+		const html = '<img src="app://34e5e5b/vault/images/test.png?123" alt="Test">';
+		const mockRead = vi.fn().mockRejectedValue(new Error("ENOENT"));
+
+		const result = await inlineImages(html, "", mockRead);
+
+		expect(result).toContain("app://34e5e5b/vault/images/test.png?123");
+	});
 });

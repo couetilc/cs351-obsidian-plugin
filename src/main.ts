@@ -213,13 +213,12 @@ export default class MdxPlugin extends Plugin {
 		this.renderPending = true;
 		try {
 			let html = await renderDocument(active.source);
-			html = html.replace(
-				/(<img[^>]*src=["'])(images\/[^"']+)(["'])/gi,
-				(_match, pre, path, post) => {
-					const resourceUrl = this.app.vault.adapter.getResourcePath(path);
-					return `${pre}${resourceUrl}${post}`;
-				}
-			);
+			const adapter = this.app.vault.adapter;
+			html = await inlineImages(html, "", async (imgPath) => {
+				const vaultPath = imgPath.startsWith("/") ? imgPath.slice(1) : imgPath;
+				const arrayBuffer = await adapter.readBinary(vaultPath);
+				return Buffer.from(arrayBuffer);
+			});
 			const fmOffset = getFrontmatterLineCount(active.source);
 			const targetLine = this.lastCursorLine > fmOffset
 				? this.lastCursorLine - fmOffset
@@ -576,7 +575,9 @@ export default class MdxPlugin extends Plugin {
 				view.getState()
 			);
 			if (newState) {
-				view.setState(newState);
+				view.setState(newState).catch(() => {
+					// Obsidian may reject during view transitions (e.g. file reload after pull)
+				});
 			}
 		}, 50);
 	}
