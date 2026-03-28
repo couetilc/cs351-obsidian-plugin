@@ -4,7 +4,6 @@ import { jsx, jsxs } from "preact/jsx-runtime";
 import { renderToString } from "preact-render-to-string";
 import remarkGfm from "remark-gfm";
 import remarkToc from "remark-toc";
-import rehypeTocTarget from "../rehype-toc-target.mjs";
 import rehypeSourceLine from "../rehype-source-line.mjs";
 import { components } from "./components/index";
 import { createHighlighter, type Highlighter } from "shiki";
@@ -266,7 +265,7 @@ export async function render(source: string): Promise<string> {
 			remarkGfm,
 			[remarkToc, { heading: "contents", maxDepth: 4, ordered: true }],
 		],
-		rehypePlugins: [rehypeTocTarget, rehypeSourceLine],
+		rehypePlugins: [rehypeSourceLine],
 		jsx: false,
 		jsxImportSource: "preact",
 	});
@@ -351,6 +350,15 @@ ${componentsCss}</style>
 ${contentHtml}
 ${mermaidScript}<script>
 (function(){
+  document.addEventListener('click',function(e){
+    var a=e.target.closest('a');
+    if(a&&a.getAttribute('href')&&a.getAttribute('href').charAt(0)==='#'){
+      e.preventDefault();
+      var id=decodeURIComponent(a.getAttribute('href').slice(1));
+      var el=document.getElementById(id);
+      if(el)el.scrollIntoView({behavior:'smooth'});
+    }
+  });
   document.addEventListener('scroll',function(){
     parent.postMessage({type:'ca-scroll',scrollTop:document.documentElement.scrollTop},'*');
   });
